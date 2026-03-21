@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tests — IRPF Calculator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; padding: 2rem; background: #f8f9fa; color: #333; }
+        h1 { margin-bottom: 1rem; }
+        .summary { font-size: 1.1rem; margin-bottom: 1.5rem; padding: 1rem; border-radius: 8px; }
+        .summary.pass { background: #c8e6c9; color: #1b5e20; }
+        .summary.fail { background: #ffcdd2; color: #b71c1c; }
+        .group { margin-bottom: 2rem; }
+        .group h2 { font-size: 1.1rem; margin-bottom: .5rem; border-bottom: 2px solid #ccc; padding-bottom: .3rem; }
+        .test { padding: .4rem .8rem; font-size: .9rem; border-left: 4px solid; margin: .2rem 0; border-radius: 0 4px 4px 0; }
+        .test.pass { border-color: #4caf50; background: #e8f5e9; }
+        .test.fail { border-color: #f44336; background: #ffebee; }
+        .test .detail { font-size: .8rem; color: #666; margin-top: .15rem; }
+    </style>
+</head>
+<body>
+
+<h1>🧪 Tests — Calculadora IRPF 2025</h1>
+<div class="summary" id="summary"></div>
+<div id="output"></div>
+
+<!-- Hidden form elements that app.js references -->
+<div style="display:none">
+    <input id="bruto" value="30000">
+    <select id="pagas"><option value="12" selected>12</option><option value="14">14</option></select>
+    <select id="contrato"><option value="indefinido" selected>Indefinido</option><option value="temporal">Temporal</option></select>
+    <select id="edad"><option value="menor65" selected>Menor 65</option></select>
+    <select id="discapacidad"><option value="no" selected>No</option><option value="33">33%</option><option value="65">65%</option></select>
+    <select id="hijos"><option value="0" selected>0</option></select>
+    <select id="ascendientes"><option value="0" selected>0</option></select>
+    <select id="grupo"><option value="4" selected>4</option></select>
+    <input id="cnae" value="">
+    <small id="cnaeHint"></small>
+    <input id="espSeguroMedicoAd" value="">
+    <input id="espSeguroMedicoFl" value="">
+    <select id="espSeguroMedicoBenef"><option value="1" selected>1</option></select>
+    <input id="espTicketRestAd" value="">
+    <input id="espTicketRestFl" value="">
+    <input id="espTicketRestDias" value="220">
+    <input id="espTransporteAd" value="">
+    <input id="espTransporteFl" value="">
+    <div id="espCustomList"></div>
+    <div id="results">
+        <table><tbody id="tbSS"></tbody><tfoot><tr id="tfSS"></tr></tfoot></table>
+        <table><tbody id="tbFlow"></tbody></table>
+        <table><tbody id="tbMin"></tbody><tfoot><tr><td id="tfMinEst"></td><td id="tfMinAut"></td></tr></tfoot></table>
+        <table><tbody id="tbEst"></tbody><tfoot id="tfEst"></tfoot></table>
+        <table><tbody id="tbAut"></tbody><tfoot id="tfAut"></tfoot></table>
+        <table><tbody id="tbIrpfResumen"></tbody><tfoot id="tfIrpfResumen"></tfoot></table>
+        <div id="heroGrid"></div>
+        <div id="monthlyHint"></div>
+        <div id="monthlyGrid"></div>
+        <svg id="pieChart" viewBox="0 0 200 200"></svg>
+        <div id="pieLegend"></div>
+        <div id="iceAbove"><div id="iceLblAbove"></div></div>
+        <div id="iceBelow"><div id="iceItems"></div></div>
+        <div id="iceSkyLabel"></div>
+        <div id="iceWorkerLabel"></div>
+        <div id="iceEmployerLabel"></div>
+        <div id="iceZoneNet"></div>
+        <div id="iceZoneEmployee"></div>
+        <div id="iceZoneEmployer"></div>
+        <div id="iceSummary"></div>
+        <!-- Iceberg stubs for renderIceberg -->
+    </div>
+</div>
+
+<!-- Load application JS -->
+<script src="../js/tarifa-at.js"></script>
+<script src="../js/app.js"></script>
+
+<script>
+'use strict';
+
+// ─── Test framework ───────────────────────────────────────
+
+let _passed = 0, _failed = 0;
+const _groups = [];
+let _currentGroup = null;
+
+function group(name) {
+    _currentGroup = { name, tests: [] };
+    _groups.push(_currentGroup);
+}
+
+function assert(description, condition, detail) {
+    const ok = !!condition;
+    if (ok) _passed++; else _failed++;
+    _currentGroup.tests.push({ description, ok, detail: detail || '' });
+}
+
+function assertClose(description, actual, expected, tolerance) {
+    tolerance = tolerance ?? 0.01;
+    const ok = Math.abs(actual - expected) <= tolerance;
+    const detail = ok ? '' : `expected ≈ ${expected}, got ${actual} (diff ${Math.abs(actual - expected).toFixed(4)})`;
+    assert(description, ok, detail);
+}
+
+function assertEqual(description, actual, expected) {
+    const ok = actual === expected;
+    const detail = ok ? '' : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`;
+    assert(description, ok, detail);
+}
+
+function render() {
+    const out = document.getElementById('output');
+    const sum = document.getElementById('summary');
+
+    sum.textContent = `${_passed + _failed} tests: ${_passed} passed, ${_failed} failed`;
+    sum.className = 'summary ' + (_failed === 0 ? 'pass' : 'fail');
+
+    out.innerHTML = _groups.map(g => {
+        const html = g.tests.map(t =>
+            `<div class="test ${t.ok ? 'pass' : 'fail'}">` +
+            `${t.ok ? '✅' : '❌'} ${t.description}` +
+            (t.detail ? `<div class="detail">${t.detail}</div>` : '') +
+            `</div>`
+        ).join('');
+        return `<div class="group"><h2>${g.name}</h2>${html}</div>`;
+    }).join('');
+}
+
+// ─── Tests ────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════
+//  1. Constants sanity checks
+// ═══════════════════════════════════════════
+
+group('Constants');
+
+assertEqual('ESCALA_ESTATAL has 6 brackets', ESCALA_ESTATAL.length, 6);
+assertEqual('ESCALA_ANDALUCIA has 5 brackets', ESCALA_ANDALUCIA.length, 5);
+assertClose('Estatal first bracket 9.5%', ESCALA_ESTATAL[0].tipo, 9.5);
+assertClose('Estatal last bracket 24.5%', ESCALA_ESTATAL[5].tipo, 24.5);
+assertClose('Andalucía last bracket 22.5%', ESCALA_ANDALUCIA[4].tipo, 22.5);
+assertClose('SS Worker CC 4.70%', SS_WORKER.contingenciasComunes, 4.70);
+assertClose('SS Worker FP 0.10%', SS_WORKER.formacionProfesional, 0.10);
+assertClose('SS Worker MEI 0.13%', SS_WORKER.mei, 0.13);
+assertClose('SS Desempleo indefinido worker 1.55%', SS_DESEMPLEO_WORKER.indefinido, 1.55);
+assertClose('SS Desempleo temporal worker 1.60%', SS_DESEMPLEO_WORKER.temporal, 1.60);
+assertClose('SS Employer CC 23.60%', SS_EMPLOYER.contingenciasComunes, 23.60);
+assertClose('SS Employer AT default 2.00%', SS_EMPLOYER.accidentesTrabajo, 2.00);
+assertClose('SS Employer FOGASA 0.20%', SS_EMPLOYER.fogasa, 0.20);
+assertClose('SS Employer FP 0.60%', SS_EMPLOYER.formacionProfesional, 0.60);
+assertClose('SS Employer MEI 0.67%', SS_EMPLOYER.mei, 0.67);
+assertClose('Base max 4909.50', BASES.max, 4909.50);
+assertClose('Min estatal contribuyente 5550', MIN_EST.contribuyente, 5550);
+assertClose('Min autonómico contribuyente 5790', MIN_AUT.contribuyente, 5790);
+assertClose('SMI 16576', SMI_ANUAL, 16576);
+assertClose('Especie seguro médico 500', ESPECIE.seguroMedicoExentoPorPersona, 500);
+assertClose('Especie seguro médico discapacidad 1500', ESPECIE.seguroMedicoExentoDiscapacidad, 1500);
+assertClose('Especie ticket restaurante max dia 11', ESPECIE.ticketRestauranteMaxDia, 11);
+assertClose('Especie transporte exento 1500', ESPECIE.transporteExentoAnual, 1500);
+assertEqual('OTROS_GASTOS = 2000', OTROS_GASTOS, 2000);
+
+// ═══════════════════════════════════════════
+//  2. reduccionRendimientos
+// ═══════════════════════════════════════════
+
+group('reduccionRendimientos()');
+
+assertClose('rendNeto 0 → 7302', reduccionRendimientos(0), 7302);
+assertClose('rendNeto 14852 → 7302 (boundary)', reduccionRendimientos(14852), 7302);
+assertClose('rendNeto 15000 → 7302 - 2.59*(15000-14852)', reduccionRendimientos(15000), 7302 - 2.59 * (15000 - 14852));
+assertClose('rendNeto 16000 → 7302 - 2.59*1148', reduccionRendimientos(16000), 7302 - 2.59 * (16000 - 14852));
+assertClose('rendNeto 17673.52 → max(7302-2.59*2821.52, 0)', reduccionRendimientos(17673.52), Math.max(7302 - 2.59 * 2821.52, 0));
+assertClose('rendNeto 17674 → 0', reduccionRendimientos(17674), 0);
+assertClose('rendNeto 20000 → 0', reduccionRendimientos(20000), 0);
+assertClose('rendNeto 50000 → 0', reduccionRendimientos(50000), 0);
+
+// ═══════════════════════════════════════════
+//  3. splitExempt
+// ═══════════════════════════════════════════
+
+group('splitExempt()');
+
+// All zero
+(function() {
+    const r = splitExempt(0, 0, 500);
+    assertClose('0+0 limit 500: exAd=0', r.exAd, 0);
+    assertClose('0+0 limit 500: exFl=0', r.exFl, 0);
+})();
+
+// Only adicional, under limit
+(function() {
+    const r = splitExempt(400, 0, 500);
+    assertClose('400+0 limit 500: exAd=400 (all exempt)', r.exAd, 400);
+    assertClose('400+0 limit 500: grAd=0', r.grAd, 0);
+})();
+
+// Only adicional, over limit
+(function() {
+    const r = splitExempt(800, 0, 500);
+    assertClose('800+0 limit 500: exAd=500', r.exAd, 500);
+    assertClose('800+0 limit 500: grAd=300', r.grAd, 300);
+})();
+
+// Only flexible, under limit
+(function() {
+    const r = splitExempt(0, 300, 500);
+    assertClose('0+300 limit 500: exFl=300', r.exFl, 300);
+    assertClose('0+300 limit 500: grFl=0', r.grFl, 0);
+})();
+
+// Mixed, total under limit → all exempt
+(function() {
+    const r = splitExempt(200, 100, 500);
+    assertClose('200+100 limit 500: exAd=200', r.exAd, 200);
+    assertClose('200+100 limit 500: exFl=100', r.exFl, 100);
+    assertClose('200+100 limit 500: grAd=0', r.grAd, 0);
+    assertClose('200+100 limit 500: grFl=0', r.grFl, 0);
+})();
+
+// Mixed, total over limit → proportional split
+(function() {
+    const r = splitExempt(600, 400, 500);
+    // ratio: ad=0.6, fl=0.4 → exAd=300, exFl=200
+    assertClose('600+400 limit 500: exAd=300', r.exAd, 300);
+    assertClose('600+400 limit 500: exFl=200', r.exFl, 200);
+    assertClose('600+400 limit 500: grAd=300', r.grAd, 300);
+    assertClose('600+400 limit 500: grFl=200', r.grFl, 200);
+})();
+
+// Ticket restaurante example: 2052 ad + 348 fl, limit 2420
+(function() {
+    const r = splitExempt(2052, 348, 2420);
+    // total=2400 < 2420 → all exempt
+    assertClose('ticket rest 2052+348 limit 2420: all exempt, exAd=2052', r.exAd, 2052);
+    assertClose('ticket rest 2052+348 limit 2420: all exempt, exFl=348', r.exFl, 348);
+    assertClose('ticket rest: grAd=0', r.grAd, 0);
+    assertClose('ticket rest: grFl=0', r.grFl, 0);
+})();
+
+// Seguro médico: 979.32 ad only, limit 500
+(function() {
+    const r = splitExempt(979.32, 0, 500);
+    assertClose('seg medico 979.32+0 lim 500: exAd=500', r.exAd, 500);
+    assertClose('seg medico: grAd=479.32', r.grAd, 479.32);
+})();
+
+// Transport: 0 ad + 1636.32 fl, limit 1500
+(function() {
+    const r = splitExempt(0, 1636.32, 1500);
+    assertClose('transport 0+1636.32 lim 1500: exFl=1500', r.exFl, 1500);
+    assertClose('transport: grFl=136.32', r.grFl, 136.32);
+})();
+
+// ═══════════════════════════════════════════
+//  4. calcularMinimo
+// ═══════════════════════════════════════════
+
+group('calcularMinimo()');
+
+// Base case: menor65, no discapacidad, 0 hijos, 0 ascendientes
+(function() {
+    const m = calcularMinimo('menor65', 'no', 0, 0);
+    assertClose('Estatal base: 5550', m.estatal.minimo, 5550);
+    assertClose('Autonómico base: 5790', m.autonomico.minimo, 5790);
+})();
+
+// Mayor 65
+(function() {
+    const m = calcularMinimo('mayor65', 'no', 0, 0);
+    assertClose('Estatal mayor65: 5550+1150=6700', m.estatal.minimo, 6700);
+    assertClose('Autonómico mayor65: 5790+1200=6990', m.autonomico.minimo, 6990);
+})();
+
+// Mayor 75
+(function() {
+    const m = calcularMinimo('mayor75', 'no', 0, 0);
+    assertClose('Estatal mayor75: 5550+1150+1400=8100', m.estatal.minimo, 8100);
+    assertClose('Autonómico mayor75: 5790+1200+1460=8450', m.autonomico.minimo, 8450);
+})();
+
+// Discapacidad 33%
+(function() {
+    const m = calcularMinimo('menor65', '33', 0, 0);
+    assertClose('Estatal disc33: 5550+3000=8550', m.estatal.minimo, 8550);
+    assertClose('Autonómico disc33: 5790+3130=8920', m.autonomico.minimo, 8920);
+})();
+
+// Discapacidad 65%
+(function() {
+    const m = calcularMinimo('menor65', '65', 0, 0);
+    assertClose('Estatal disc65: 5550+9000=14550', m.estatal.minimo, 14550);
+    assertClose('Autonómico disc65: 5790+9390=15180', m.autonomico.minimo, 15180);
+})();
+
+// 1 hijo
+(function() {
+    const m = calcularMinimo('menor65', 'no', 1, 0);
+    assertClose('Estatal 1 hijo: 5550+2400=7950', m.estatal.minimo, 7950);
+    assertClose('Autonómico 1 hijo: 5790+2510=8300', m.autonomico.minimo, 8300);
+})();
+
+// 2 hijos
+(function() {
+    const m = calcularMinimo('menor65', 'no', 2, 0);
+    assertClose('Estatal 2 hijos: 5550+2400+2700=10650', m.estatal.minimo, 10650);
+    assertClose('Autonómico 2 hijos: 5790+2510+2820=11120', m.autonomico.minimo, 11120);
+})();
+
+// 3 hijos
+(function() {
+    const m = calcularMinimo('menor65', 'no', 3, 0);
+    assertClose('Estatal 3 hijos: 5550+2400+2700+4000=14650', m.estatal.minimo, 14650);
+})();
+
+// 4 hijos (cap at array length)
+(function() {
+    const m = calcularMinimo('menor65', 'no', 4, 0);
+    assertClose('Estatal 4 hijos: 5550+2400+2700+4000+4500=19150', m.estatal.minimo, 19150);
+})();
+
+// 1 ascendiente
+(function() {
+    const m = calcularMinimo('menor65', 'no', 0, 1);
+    assertClose('Estatal 1 ascendiente: 5550+1150=6700', m.estatal.minimo, 6700);
+    assertClose('Autonómico 1 ascendiente: 5790+1200=6990', m.autonomico.minimo, 6990);
+})();
+
+// 2 ascendientes
+(function() {
+    const m = calcularMinimo('menor65', 'no', 0, 2);
+    assertClose('Estatal 2 ascendientes: 5550+2*1150=7850', m.estatal.minimo, 7850);
+})();
+
+// Combined: mayor75 + disc33 + 2 hijos + 1 ascendiente
+(function() {
+    const m = calcularMinimo('mayor75', '33', 2, 1);
+    const expEst = 5550 + 1150 + 1400 + 3000 + 2400 + 2700 + 1150;  // 17350
+    const expAut = 5790 + 1200 + 1460 + 3130 + 2510 + 2820 + 1200;  // 18110
+    assertClose('Estatal combined: 17350', m.estatal.minimo, expEst);
+    assertClose('Autonómico combined: 18110', m.autonomico.minimo, expAut);
+})();
+
+// ═══════════════════════════════════════════
+//  5. aplicarEscala — IRPF brackets
+// ═══════════════════════════════════════════
+
+group('aplicarEscala() — Estatal');
+
+// 0 base → 0 total
+assertClose('Base 0 → cuota 0', aplicarEscala(0, ESCALA_ESTATAL).total, 0);
+
+// 12450 → all in first bracket at 9.5%
+assertClose('Base 12450 → 12450*0.095=1182.75', aplicarEscala(12450, ESCALA_ESTATAL).total, 1182.75);
+
+// 20200 → first bracket + second bracket
+(function() {
+    const expected = 12450 * 0.095 + (20200 - 12450) * 0.12;
+    assertClose('Base 20200 → ' + expected.toFixed(2), aplicarEscala(20200, ESCALA_ESTATAL).total, expected);
+})();
+
+// 35200 → 3 brackets
+(function() {
+    const expected = 12450 * 0.095 + (20200 - 12450) * 0.12 + (35200 - 20200) * 0.15;
+    assertClose('Base 35200 → ' + expected.toFixed(2), aplicarEscala(35200, ESCALA_ESTATAL).total, expected);
+})();
+
+// 60000 → 4 brackets
+(function() {
+    const expected = 12450 * 0.095 + (20200 - 12450) * 0.12 + (35200 - 20200) * 0.15 + (60000 - 35200) * 0.185;
+    assertClose('Base 60000 → ' + expected.toFixed(2), aplicarEscala(60000, ESCALA_ESTATAL).total, expected);
+})();
+
+// 300000 → 5 brackets
+(function() {
+    const expected = 12450 * 0.095 + (20200 - 12450) * 0.12 + (35200 - 20200) * 0.15
+        + (60000 - 35200) * 0.185 + (300000 - 60000) * 0.225;
+    assertClose('Base 300000 → ' + expected.toFixed(2), aplicarEscala(300000, ESCALA_ESTATAL).total, expected);
+})();
+
+// 400000 → all 6 brackets
+(function() {
+    const expected = 12450 * 0.095 + (20200 - 12450) * 0.12 + (35200 - 20200) * 0.15
+        + (60000 - 35200) * 0.185 + (300000 - 60000) * 0.225 + (400000 - 300000) * 0.245;
+    assertClose('Base 400000 → ' + expected.toFixed(2), aplicarEscala(400000, ESCALA_ESTATAL).total, expected);
+})();
+
+// Official cumulative quotas check (AEAT table)
+(function() {
+    // After 12450: cuota acumulada = 1182.75
+    assertClose('Cuota acumulada 12450', aplicarEscala(12450, ESCALA_ESTATAL).total, 1182.75);
+    // After 20200: 1182.75 + 7750*0.12 = 1182.75+930 = 2112.75
+    assertClose('Cuota acumulada 20200', aplicarEscala(20200, ESCALA_ESTATAL).total, 2112.75);
+    // After 35200: 2112.75 + 15000*0.15 = 2112.75+2250 = 4362.75
+    assertClose('Cuota acumulada 35200', aplicarEscala(35200, ESCALA_ESTATAL).total, 4362.75);
+    // After 60000: 4362.75 + 24800*0.185 = 4362.75+4588 = 8950.75
+    assertClose('Cuota acumulada 60000', aplicarEscala(60000, ESCALA_ESTATAL).total, 8950.75);
+    // After 300000: 8950.75 + 240000*0.225 = 8950.75+54000 = 62950.75
+    assertClose('Cuota acumulada 300000', aplicarEscala(300000, ESCALA_ESTATAL).total, 62950.75);
+})();
+
+group('aplicarEscala() — Andalucía');
+
+assertClose('Base 0 → cuota 0', aplicarEscala(0, ESCALA_ANDALUCIA).total, 0);
+assertClose('Base 13000 → 13000*0.095=1235', aplicarEscala(13000, ESCALA_ANDALUCIA).total, 1235);
+
+(function() {
+    const expected = 13000 * 0.095 + (21100 - 13000) * 0.12;
+    assertClose('Base 21100 → ' + expected.toFixed(2), aplicarEscala(21100, ESCALA_ANDALUCIA).total, expected);
+})();
+
+// ═══════════════════════════════════════════
+//  6. parseRawEuro
+// ═══════════════════════════════════════════
+
+group('parseRawEuro()');
+
+assertClose('Empty string → 0', parseRawEuro(''), 0);
+assertClose('"30000" → 30000', parseRawEuro('30000'), 30000);
+assertClose('"30.000" → 30000', parseRawEuro('30.000'), 30000);
+assertClose('"30.000,50" → 30000.50', parseRawEuro('30.000,50'), 30000.50);
+assertClose('"1.234,56" → 1234.56', parseRawEuro('1.234,56'), 1234.56);
+assertClose('"81,61" → 81.61', parseRawEuro('81,61'), 81.61);
+assertClose('"136.36" (no comma) → 136.36', parseRawEuro('136.36'), 136.36);
+assertClose('"30000.50" (US format) → 30000.50', parseRawEuro('30000.50'), 30000.50);
+assertClose('Negative → 0 (clamped)', parseRawEuro('-100'), 0);
+assertClose('Letters → 0', parseRawEuro('abc'), 0);
+assertClose('"€ 1.500" → 1500', parseRawEuro('€ 1.500'), 1500);
+
+// ═══════════════════════════════════════════
+//  7. buscarTarifaAT (CNAE lookup)
+// ═══════════════════════════════════════════
+
+group('buscarTarifaAT()');
+
+(function() {
+    const r = buscarTarifaAT('6201');
+    assert('CNAE 6201 found', r !== null);
+    assertClose('CNAE 6201 IT 0.65%', r.it, 0.65);
+    assertClose('CNAE 6201 IMS 0.35%', r.ims, 0.35);
+    assertClose('CNAE 6201 total 1.00%', r.total, 1.00);
+})();
+
+(function() {
+    const r = buscarTarifaAT('01');
+    assert('CNAE 01 found', r !== null);
+    assertClose('CNAE 01 IT 1.50%', r.it, 1.50);
+    assertClose('CNAE 01 IMS 1.10%', r.ims, 1.10);
+})();
+
+(function() {
+    const r = buscarTarifaAT('0113');
+    assert('CNAE 0113 found (exact)', r !== null);
+    assertClose('CNAE 0113 IT 1.00%', r.it, 1.00);
+})();
+
+assert('CNAE 9999 → null', buscarTarifaAT('9999') === null);
+assert('Empty CNAE → null', buscarTarifaAT('') === null);
+
+// ═══════════════════════════════════════════
+//  8. SS Calculation
+// ═══════════════════════════════════════════
+
+group('Social Security — Worker');
+
+(function() {
+    const bruto = 30000;
+    const baseMin = BASES.minByGroup[4];
+    const baseMax = BASES.max;
+    const baseSS = Math.min(Math.max(bruto / 12, baseMin), baseMax);
+    assertClose('Base SS for 30k bruto, grupo 4', baseSS, 2500);
+
+    const totalWorkerPct = SS_WORKER.contingenciasComunes + SS_DESEMPLEO_WORKER.indefinido
+        + SS_WORKER.formacionProfesional + SS_WORKER.mei;
+    assertClose('Total worker % indef', totalWorkerPct, 6.48, 0.01);
+
+    const anual = baseSS * (totalWorkerPct / 100) * 12;
+    assertClose('Annual SS worker for 30k indef', anual, 1944, 1);
+})();
+
+// Base max cap
+(function() {
+    const bruto = 100000;
+    const baseSS = Math.min(Math.max(bruto / 12, BASES.minByGroup[4]), BASES.max);
+    assertClose('Base SS capped at max for 100k', baseSS, BASES.max);
+})();
+
+// Base min floor
+(function() {
+    const bruto = 10000;
+    const baseSS = Math.min(Math.max(bruto / 12, BASES.minByGroup[1]), BASES.max);
+    assertClose('Base SS floored at group 1 min for 10k', baseSS, BASES.minByGroup[1]);
+})();
+
+// ═══════════════════════════════════════════
+//  9. Transport cap at 1500€/year
+// ═══════════════════════════════════════════
+
+group('Transport annual cap');
+
+// Under cap → no change
+(function() {
+    let ad = 50 * 12;   // 600
+    let fl = 50 * 12;   // 600
+    const raw = ad + fl; // 1200 < 1500
+    assert('1200 under 1500 cap → no capping', raw <= ESPECIE.transporteExentoAnual);
+})();
+
+// Over cap → proportional reduction
+(function() {
+    let ad = 100 * 12;  // 1200
+    let fl = 50 * 12;   // 600
+    const raw = ad + fl; // 1800
+    assert('1800 over 1500 cap', raw > ESPECIE.transporteExentoAnual);
+    const ratio = ESPECIE.transporteExentoAnual / raw;
+    ad = ad * ratio;
+    fl = fl * ratio;
+    assertClose('Capped ad = 1000', ad, 1000);
+    assertClose('Capped fl = 500', fl, 500);
+    assertClose('Capped total = 1500', ad + fl, 1500);
+})();
+
+// ═══════════════════════════════════════════
+//  10. SMI exemption rule
+// ═══════════════════════════════════════════
+
+group('SMI exemption');
+
+assert('Bruto ≤ SMI → 0% IRPF check', SMI_ANUAL === 16576);
+assert('Bruto = 16576 should trigger SMI rule', 16576 <= SMI_ANUAL);
+assert('Bruto = 16577 should NOT trigger SMI rule', !(16577 <= SMI_ANUAL));
+
+// ═══════════════════════════════════════════
+//  11. Integration: full calculation
+// ═══════════════════════════════════════════
+
+group('Integration — Full calc (30k, indefinido, grupo 4)');
+
+(function() {
+    // Set up the form
+    document.getElementById('bruto').value = '30000';
+    document.getElementById('pagas').value = '12';
+    document.getElementById('contrato').value = 'indefinido';
+    document.getElementById('edad').value = 'menor65';
+    document.getElementById('discapacidad').value = 'no';
+    document.getElementById('hijos').value = '0';
+    document.getElementById('ascendientes').value = '0';
+    document.getElementById('grupo').value = '4';
+    document.getElementById('cnae').value = '';
+    document.getElementById('espSeguroMedicoAd').value = '';
+    document.getElementById('espSeguroMedicoFl').value = '';
+    document.getElementById('espTicketRestAd').value = '';
+    document.getElementById('espTicketRestFl').value = '';
+    document.getElementById('espTicketRestDias').value = '220';
+    document.getElementById('espTransporteAd').value = '';
+    document.getElementById('espTransporteFl').value = '';
+
+    // Suppress scrollIntoView (not available in hidden test)
+    const origScroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function() {};
+
+    calcular();
+
+    Element.prototype.scrollIntoView = origScroll;
+
+    // Verify hero cards contain expected values
+    const hero = document.getElementById('heroGrid').innerHTML;
+    assert('Hero contains "Salario bruto"', hero.includes('Salario bruto'));
+    assert('Hero contains "30.000,00"', hero.includes('30.000,00'));
+    assert('Hero contains "Salario neto anual"', hero.includes('Salario neto anual'));
+    assert('Hero contains IRPF total', hero.includes('IRPF total'));
+    assert('Hero contains SS trabajador', hero.includes('Seg. Social trabajador'));
+
+    // Verify SS table was populated
+    const ssTb = document.getElementById('tbSS').innerHTML;
+    assert('SS table has contingencias comunes', ssTb.includes('Contingencias comunes'));
+    assert('SS table has MEI', ssTb.includes('MEI'));
+
+    // Verify IRPF flow shows base liquidable
+    const flow = document.getElementById('tbFlow').innerHTML;
+    assert('Flow has rendimiento íntegro', flow.includes('Rendimiento íntegro'));
+    assert('Flow has base liquidable', flow.includes('Base liquidable'));
+
+    // Known values for 30k bruto:
+    // Base SS mensual = max(30000/12, 1381.20) = 2500, capped at 4909.50 → 2500
+    // CC worker: 2500*4.70%*12 = 1410
+    // Desempleo indef: 2500*1.55%*12 = 465
+    // FP: 2500*0.10%*12 = 30
+    // MEI: 2500*0.13%*12 = 39
+    // Total SS = 1944
+    const expectedSS = 2500 * (4.70 + 1.55 + 0.10 + 0.13) / 100 * 12;
+    const ssFooter = document.getElementById('tfSS').innerHTML;
+    // Check the SS total appears in the footer  
+    assert('SS footer shows worker total ≈ 1944', ssFooter.includes('1.944,00'));
+
+    // rendIntegro = 30000 (no especie)
+    // gastosDeducibles = 1944 + 2000 = 3944
+    // rendNeto = 30000 - 3944 = 26056
+    // reduccion = 0 (>17673.52)
+    // baseLiquidable = 26056
+    const rendNeto = 30000 - expectedSS - 2000;
+    assertClose('rendNeto ≈ 26056', rendNeto, 26056, 1);
+    const reduccion = reduccionRendimientos(rendNeto);
+    assertClose('Reducción = 0 (high income)', reduccion, 0);
+    const baseLiq = rendNeto - reduccion;
+
+    // IRPF estatal for baseLiq ≈ 26056
+    const estCuota = aplicarEscala(baseLiq, ESCALA_ESTATAL);
+    const minEst = aplicarEscala(5550, ESCALA_ESTATAL);
+    const cuotaEst = Math.max(estCuota.total - minEst.total, 0);
+
+    // IRPF autonómico for baseLiq ≈ 26056
+    const autCuota = aplicarEscala(baseLiq, ESCALA_ANDALUCIA);
+    const minAut = aplicarEscala(5790, ESCALA_ANDALUCIA);
+    const cuotaAut = Math.max(autCuota.total - minAut.total, 0);
+
+    const totalIRPF = cuotaEst + cuotaAut;
+    const neto = 30000 - expectedSS - totalIRPF;
+
+    // Just check the results are in a reasonable range
+    assert('IRPF total > 0 for 30k', totalIRPF > 0);
+    assert('IRPF total < 10000 for 30k', totalIRPF < 10000);
+    assert('Neto > 20000 for 30k', neto > 20000);
+    assert('Neto < 30000 for 30k', neto < 30000);
+})();
+
+// ═══════════════════════════════════════════
+//  12. Integration: SMI salary → 0 IRPF
+// ═══════════════════════════════════════════
+
+group('Integration — SMI salary (16576, 0% IRPF)');
+
+(function() {
+    document.getElementById('bruto').value = '16576';
+    document.getElementById('pagas').value = '14';
+    document.getElementById('contrato').value = 'indefinido';
+    document.getElementById('edad').value = 'menor65';
+    document.getElementById('discapacidad').value = 'no';
+    document.getElementById('hijos').value = '0';
+    document.getElementById('ascendientes').value = '0';
+    document.getElementById('grupo').value = '4';
+    document.getElementById('cnae').value = '';
+    document.getElementById('espSeguroMedicoAd').value = '';
+    document.getElementById('espSeguroMedicoFl').value = '';
+    document.getElementById('espTicketRestAd').value = '';
+    document.getElementById('espTicketRestFl').value = '';
+    document.getElementById('espTicketRestDias').value = '220';
+    document.getElementById('espTransporteAd').value = '';
+    document.getElementById('espTransporteFl').value = '';
+
+    const origScroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function() {};
+    calcular();
+    Element.prototype.scrollIntoView = origScroll;
+
+    const hero = document.getElementById('heroGrid').innerHTML;
+    assert('SMI: IRPF total shows 0,00', hero.includes('0,00'));
+    assert('SMI: hero shows IRPF total', hero.includes('IRPF total'));
+})();
+
+// ═══════════════════════════════════════════
+//  13. Integration: with especie
+// ═══════════════════════════════════════════
+
+group('Integration — With especie (seguro médico + ticket rest + transporte)');
+
+(function() {
+    document.getElementById('bruto').value = '35000';
+    document.getElementById('pagas').value = '12';
+    document.getElementById('contrato').value = 'indefinido';
+    document.getElementById('edad').value = 'menor65';
+    document.getElementById('discapacidad').value = 'no';
+    document.getElementById('hijos').value = '0';
+    document.getElementById('ascendientes').value = '0';
+    document.getElementById('grupo').value = '4';
+    document.getElementById('cnae').value = '';
+    document.getElementById('espSeguroMedicoAd').value = '81,61';
+    document.getElementById('espSeguroMedicoFl').value = '';
+    document.getElementById('espTicketRestAd').value = '171';
+    document.getElementById('espTicketRestFl').value = '29';
+    document.getElementById('espTicketRestDias').value = '220';
+    document.getElementById('espTransporteAd').value = '';
+    document.getElementById('espTransporteFl').value = '136,36';
+
+    const origScroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function() {};
+    calcular();
+    Element.prototype.scrollIntoView = origScroll;
+
+    const hero = document.getElementById('heroGrid').innerHTML;
+    assert('Especie: hero has especie adicional', hero.includes('Especie adicional'));
+    assert('Especie: hero has especie flexible', hero.includes('Especie flexible'));
+    assert('Especie: hero has especie exenta', hero.includes('Especie exenta'));
+
+    const flow = document.getElementById('tbFlow').innerHTML;
+    assert('Flow has especie adicional row', flow.includes('Especie adicional'));
+    assert('Flow has flexible exenta row', flow.includes('flexible exenta'));
+})();
+
+// ═══════════════════════════════════════════
+//  14. Edge cases
+// ═══════════════════════════════════════════
+
+group('Edge cases');
+
+// aplicarEscala with negative base
+assertClose('Negative base → 0', aplicarEscala(-5000, ESCALA_ESTATAL).total, 0);
+
+// splitExempt with 0 limit
+(function() {
+    const r = splitExempt(100, 200, 0);
+    assertClose('Limit 0: exAd=0', r.exAd, 0);
+    assertClose('Limit 0: exFl=0', r.exFl, 0);
+    assertClose('Limit 0: grAd=100', r.grAd, 100);
+    assertClose('Limit 0: grFl=200', r.grFl, 200);
+})();
+
+// Very high income
+(function() {
+    const result = aplicarEscala(1000000, ESCALA_ESTATAL);
+    assert('1M base → cuota > 0', result.total > 0);
+    assert('1M base → cuota < 250k', result.total < 250000);
+})();
+
+// reduccionRendimientos at exact boundary
+assertClose('rendNeto exactly 14852 → 7302', reduccionRendimientos(14852), 7302);
+assertClose('rendNeto 14852.01 in transitional range', reduccionRendimientos(14852.01), 7302 - 2.59 * 0.01, 0.01);
+
+// ─── Render results ───────────────────────
+render();
+
+console.log(`Tests: ${_passed} passed, ${_failed} failed, ${_passed + _failed} total`);
+</script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora IRPF + Seguridad Social 2025 — Andalucía</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header>
+    <h1>🇪🇸 Calculadora IRPF + Seguridad Social 2025</h1>
+    <p>Régimen General · Comunidad Autónoma de Andalucía</p>
+</header>
+<div class="flag-bar"></div>
+
+<div class="container">
+
+    <!-- INPUT -->
+    <div class="card">
+        <h2>📋 Datos del trabajador</h2>
+        <p class="hint">Introduce tu salario bruto anual y selecciona las opciones que correspondan. Se calculará tu Seguridad Social, IRPF y salario neto.</p>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="bruto">Salario bruto anual (€)</label>
+                <input type="text" id="bruto" placeholder="Ej: 30.000" inputmode="decimal" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="pagas">Número de pagas</label>
+                <select id="pagas">
+                    <option value="12" selected>12 pagas</option>
+                    <option value="14">14 pagas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contrato">Tipo de contrato</label>
+                <select id="contrato">
+                    <option value="indefinido">Indefinido</option>
+                    <option value="temporal">Temporal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edad">Edad del contribuyente</label>
+                <select id="edad">
+                    <option value="menor65">Menor de 65 años</option>
+                    <option value="mayor65">Entre 65 y 74 años</option>
+                    <option value="mayor75">75 años o más</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="discapacidad">Discapacidad del contribuyente</label>
+                <select id="discapacidad">
+                    <option value="no">Sin discapacidad</option>
+                    <option value="33">Discapacidad ≥ 33%</option>
+                    <option value="65">Discapacidad ≥ 65%</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="hijos">Nº de descendientes</label>
+                <select id="hijos">
+                    <option value="0">Sin descendientes</option>
+                    <option value="1">1 descendiente</option>
+                    <option value="2">2 descendientes</option>
+                    <option value="3">3 descendientes</option>
+                    <option value="4">4 o más descendientes</option>
+                </select>
+                <small class="field-hint">Menores de 25 años o con discapacidad, con rentas &lt; 8.000 € (Art. 58)</small>
+            </div>
+            <div class="form-group">
+                <label for="ascendientes">Nº de ascendientes (&gt; 65 años o discapacidad)</label>
+                <select id="ascendientes">
+                    <option value="0">Sin ascendientes</option>
+                    <option value="1">1 ascendiente</option>
+                    <option value="2">2 ascendientes</option>
+                </select>
+                <small class="field-hint">Convivientes, con rentas &lt; 8.000 € (Art. 59)</small>
+            </div>
+            <div class="form-group">
+                <label for="grupo">Grupo de cotización</label>
+                <select id="grupo">
+                    <option value="1">Grupo 1 — Ingenieros y Licenciados</option>
+                    <option value="2">Grupo 2 — Ingenieros Técnicos, Peritos</option>
+                    <option value="3">Grupo 3 — Jefes Administrativos y de Taller</option>
+                    <option value="4" selected>Grupo 4 a 7 — Resto</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="cnae">CNAE empresa (opcional)</label>
+                <input type="text" id="cnae" placeholder="Ej: 6201" inputmode="numeric" autocomplete="off" maxlength="4">
+                <small class="field-hint" id="cnaeHint">Si se indica, se usará la tarifa AT y EP oficial. Si no, se aplica 2,00&nbsp;%.</small>
+            </div>
+        </div>
+
+        <!-- RETRIBUCIÓN EN ESPECIE (collapsible) -->
+        <details class="especie-collapsible" id="especieDetails">
+            <summary class="especie-toggle">🎁 Retribución en especie <small>(opcional)</small></summary>
+            <div class="especie-body">
+                <p class="hint">Importes mensuales (€/mes). Se anualizan automáticamente (×12). Cada concepto puede repartirse entre los dos tipos:<br>
+                    <strong>Adicional</strong> = la empresa lo paga por encima de tu bruto (coste extra).<br>
+                    <strong>Flexible</strong> = se descuenta de tu bruto (sin coste extra; la parte exenta reduce tu IRPF).</p>
+
+                <!-- Conceptos con exención fiscal (siempre visibles) -->
+                <h3 class="especie-section-title">Conceptos con exención fiscal</h3>
+
+                <div class="especie-dual-group">
+                    <label class="especie-dual-label">Seguro médico</label>
+                    <div class="especie-dual-inputs">
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-adicional">Adicional</span>
+                            <input type="text" id="espSeguroMedicoAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-flexible">Flexible</span>
+                            <input type="text" id="espSeguroMedicoFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                    </div>
+                    <small class="field-hint">Exento hasta 500 €/persona/año (1.500 € si discapacidad). Art. 42.3.c)</small>
+                </div>
+                <div class="form-grid" style="margin-top:.6rem">
+                    <div class="form-group">
+                        <label for="espSeguroMedicoBenef">Nº beneficiarios seguro médico</label>
+                        <select id="espSeguroMedicoBenef">
+                            <option value="1" selected>Solo trabajador</option>
+                            <option value="2">Trabajador + 1 (cónyuge o hijo)</option>
+                            <option value="3">Trabajador + 2</option>
+                            <option value="4">Trabajador + 3</option>
+                            <option value="5">Trabajador + 4</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="especie-dual-group">
+                    <label class="especie-dual-label">Ticket restaurante</label>
+                    <div class="especie-dual-inputs">
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-adicional">Adicional</span>
+                            <input type="text" id="espTicketRestAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-flexible">Flexible</span>
+                            <input type="text" id="espTicketRestFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                    </div>
+                    <small class="field-hint">Exento hasta 11 €/día laborable (Art. 42.3.a). El importe introducido se considera íntegramente exento.</small>
+                </div>
+
+                <div class="especie-dual-group">
+                    <label class="especie-dual-label">Ticket transporte</label>
+                    <div class="especie-dual-inputs">
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-adicional">Adicional</span>
+                            <input type="text" id="espTransporteAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-flexible">Flexible</span>
+                            <input type="text" id="espTransporteFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                    </div>
+                    <small class="field-hint">Exento hasta 1.500 €/año (136,36 €/mes). Art. 42.3.e)</small>
+                </div>
+
+                <!-- Otros conceptos en especie (sin exención, dinámicos) -->
+                <h3 class="especie-section-title">Otros conceptos en especie <small>(sin exención — tributan íntegramente)</small></h3>
+                <div id="espCustomList"></div>
+                <button type="button" class="btn-add-especie" onclick="addEspecieCustom()">＋ Añadir concepto</button>
+            </div>
+        </details>
+
+        <button class="btn-calc" onclick="calcular()">Calcular nómina</button>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results" id="results">
+
+        <!-- 1. SS breakdown (trabajador + empleador) -->
+        <div class="tbl-section">
+            <h3>Cotizaciones a la Seguridad Social</h3>
+            <div class="ss-legend">
+                <span class="ss-leg-item"><span class="ss-leg-dot" style="background:#558b2f"></span> Compartido</span>
+                <span class="ss-leg-item"><span class="ss-leg-dot" style="background:#6a1b9a"></span> Solo empleador</span>
+            </div>
+            <table class="tbl-ss-combined">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Concepto</th>
+                        <th rowspan="2">Base mensual</th>
+                        <th colspan="2" class="text-center">Trabajador</th>
+                        <th colspan="2" class="text-center">Empleador</th>
+                        <th colspan="2" class="text-center">Combinado</th>
+                    </tr>
+                    <tr>
+                        <th>Tipo %</th>
+                        <th class="text-right">Cuota anual</th>
+                        <th>Tipo %</th>
+                        <th class="text-right">Cuota anual</th>
+                        <th>Tipo %</th>
+                        <th class="text-right">Cuota anual</th>
+                    </tr>
+                </thead>
+                <tbody id="tbSS"></tbody>
+                <tfoot id="tfSS"></tfoot>
+            </table>
+        </div>
+
+        <!-- 2. Determinación de la base liquidable -->
+        <div class="tbl-section">
+            <h3>Determinación de la base liquidable <span class="badge badge-green">IRPF</span></h3>
+            <table>
+                <thead><tr><th>Concepto</th><th class="text-right">Importe (€)</th></tr></thead>
+                <tbody id="tbFlow"></tbody>
+            </table>
+        </div>
+
+        <!-- 3. Mínimo personal y familiar -->
+        <div class="tbl-section">
+            <h3>Mínimo personal y familiar <span class="badge badge-state">Estatal</span> <span class="badge badge-auto">Autonómico</span></h3>
+            <table>
+                <thead><tr><th>Concepto</th><th class="text-right">Estatal (€)</th><th class="text-right">Autonómico (€)</th></tr></thead>
+                <tbody id="tbMin"></tbody>
+                <tfoot><tr><td>Total mínimo</td><td class="text-right" id="tfMinEst">—</td><td class="text-right" id="tfMinAut">—</td></tr></tfoot>
+            </table>
+        </div>
+
+        <!-- 4. IRPF estatal -->
+        <div class="tbl-section">
+            <h3>Desglose IRPF estatal <span class="badge badge-state">Art. 63 Ley IRPF</span></h3>
+            <table>
+                <thead><tr><th>Tramo</th><th>Base tramo</th><th>Tipo</th><th class="text-right">Cuota</th></tr></thead>
+                <tbody id="tbEst"></tbody>
+                <tfoot id="tfEst"></tfoot>
+            </table>
+        </div>
+
+        <!-- 5. IRPF autonómico -->
+        <div class="tbl-section">
+            <h3>Desglose IRPF autonómico — Andalucía <span class="badge badge-auto">Ley 5/2021</span></h3>
+            <table>
+                <thead><tr><th>Tramo</th><th>Base tramo</th><th>Tipo</th><th class="text-right">Cuota</th></tr></thead>
+                <tbody id="tbAut"></tbody>
+                <tfoot id="tfAut"></tfoot>
+            </table>
+        </div>
+
+        <!-- 6. IRPF resumen combinado -->
+        <div class="tbl-section">
+            <h3>Resumen IRPF <span class="badge badge-state">Estatal</span> + <span class="badge badge-auto">Autonómico</span></h3>
+            <table>
+                <thead><tr><th>Componente</th><th class="text-right">Cuota (€)</th><th class="text-right">Tipo efectivo</th></tr></thead>
+                <tbody id="tbIrpfResumen"></tbody>
+                <tfoot id="tfIrpfResumen"></tfoot>
+            </table>
+        </div>
+
+        <!-- 7. Resumen anual + mensual -->
+        <div class="hero-grid" id="heroGrid"></div>
+
+        <div class="card">
+            <h2>📆 Desglose mensual</h2>
+            <p class="hint" id="monthlyHint"></p>
+            <div class="monthly-grid" id="monthlyGrid"></div>
+        </div>
+
+        <!-- 8. Pie chart: salary breakdown -->
+        <div class="chart-wrap">
+            <h3>Distribución del salario bruto</h3>
+            <div class="pie-container">
+                <svg id="pieChart" viewBox="0 0 200 200" class="pie-svg"></svg>
+                <div class="pie-legend" id="pieLegend"></div>
+            </div>
+        </div>
+
+        <!-- 9. Iceberg diagram -->
+        <div class="card">
+            <h2>⛰️ Desglose del salario</h2>
+            <p class="hint">Lo que recibes vs. lo oculto: impuestos del trabajador y cotizaciones del empleador.</p>
+        </div>
+        <div class="iceberg-scene" id="icebergWrap">
+            <div class="ice-scene">
+                <!-- Water background -->
+                <div class="ice-water-bg"></div>
+                <!-- Waterline shimmer -->
+                <div class="ice-waterline"></div>
+                <!-- Iceberg tip (above water) -->
+                <div class="ice-tip"></div>
+                <!-- Iceberg body (below water) -->
+                <div class="ice-body"></div>
+                <!-- Flag -->
+                <div class="ice-flag">🇪🇸</div>
+                <!-- Labels -->
+                <div class="ice-label ice-label-net" id="iceZoneNet"></div>
+                <div class="ice-label ice-label-employee" id="iceZoneEmployee"></div>
+                <div class="ice-label ice-label-employer" id="iceZoneEmployer"></div>
+                <!-- Whale silhouette -->
+                <div class="ice-whale"></div>
+            </div>
+            <!-- Summary cards -->
+            <div class="ice-summary" id="iceSummary"></div>
+        </div>
+
+
+    </div>
+
+</div>
+
+<footer>
+    Datos según <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025.html" target="_blank" rel="noopener">Manual Renta 2025</a> (Agencia Tributaria) y
+    <a href="https://www.seg-social.es/wps/portal/wss/internet/Trabajadores/CotizacionRecaudacionTrabajadores/36537" target="_blank" rel="noopener">Bases y tipos de cotización</a> (Seguridad Social).
+    Herramienta orientativa — no sustituye al asesoramiento profesional.
+</footer>
+
+<script src="js/tarifa-at.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
