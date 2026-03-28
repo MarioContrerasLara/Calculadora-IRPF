@@ -319,6 +319,11 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const brutoVisible = netoClean + workerTax;
     const apparentRate = brutoVisible > 0 ? (workerTax / brutoVisible * 100) : 0;
 
+    // Iceberg body: split proportionally between worker taxes and employer taxes
+    const workerPct = totalTax > 0 ? (workerTax / totalTax * 100) : 50;
+    document.getElementById('iceBodyWorker').style.height = workerPct + '%';
+    document.getElementById('iceBodyEmployer').style.height = (100 - workerPct) + '%';
+
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
         `<div class="ice-val">€ ${fmt(netoClean)}</div>` +

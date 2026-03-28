@@ -511,8 +511,20 @@ footer a { color: var(--brand); }
     width: 280px;
     height: 260px;
     clip-path: polygon(14% 0%, 86% 0%, 92% 15%, 90% 35%, 83% 55%, 72% 72%, 58% 86%, 50% 92%, 42% 86%, 28% 72%, 17% 55%, 10% 35%, 8% 15%);
-    background: linear-gradient(180deg, rgba(180,210,225,.55) 0%, rgba(130,180,200,.35) 30%, rgba(80,150,175,.2) 70%, rgba(50,120,150,.1) 100%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     z-index: 2;
+}
+.ice-body-worker {
+    background: rgba(100, 195, 220, 0.70);
+    flex: 0 0 auto;
+    width: 100%;
+}
+.ice-body-employer {
+    background: rgba(210, 175, 55, 0.55);
+    flex: 1 1 auto;
+    width: 100%;
 }
 
 /* ─ Flag ─ */
