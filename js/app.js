@@ -558,13 +558,23 @@ function addEspecieCustom() {
     row.id = 'espCustomRow' + espCustomCounter;
     row.innerHTML =
         '<input type="text" class="especie-custom-name" placeholder="Nombre (ej: Teletrabajo)" autocomplete="off">' +
-        '<span class="especie-custom-tag especie-dual-tag tag-adicional">Ad.</span>' +
-        '<input type="text" class="especie-custom-ad" placeholder="€/mes" inputmode="decimal" autocomplete="off">' +
-        '<span class="especie-custom-tag especie-dual-tag tag-flexible">Fl.</span>' +
-        '<input type="text" class="especie-custom-fl" placeholder="€/mes" inputmode="decimal" autocomplete="off">' +
+        '<label class="especie-din-label"><input type="checkbox" class="especie-din-chk" onchange="toggleEspecieDin(this)"> Din.</label>' +
+        '<span class="especie-custom-tag especie-dual-tag tag-adicional especie-esp-only">Ad.</span>' +
+        '<input type="text" class="especie-custom-ad especie-esp-only" placeholder="€/mes" inputmode="decimal" autocomplete="off">' +
+        '<span class="especie-custom-tag especie-dual-tag tag-flexible especie-esp-only">Fl.</span>' +
+        '<input type="text" class="especie-custom-fl especie-esp-only" placeholder="€/mes" inputmode="decimal" autocomplete="off">' +
+        '<input type="text" class="especie-custom-din" placeholder="€/mes" inputmode="decimal" autocomplete="off" style="display:none">' +
         '<button type="button" class="btn-remove-especie" onclick="removeEspecieCustom(this)" title="Eliminar">✕</button>';
     document.getElementById('espCustomList').appendChild(row);
     row.querySelector('.especie-custom-name').focus();
+}
+
+function toggleEspecieDin(chk) {
+    const row = chk.closest('.especie-custom-row');
+    const isDin = chk.checked;
+    row.querySelectorAll('.especie-esp-only').forEach(el => { el.style.display = isDin ? 'none' : ''; });
+    row.querySelector('.especie-custom-din').style.display = isDin ? '' : 'none';
+    scheduleCalcGlobal();
 }
 
 function removeEspecieCustom(btn) {
@@ -585,10 +595,17 @@ function getEspecieCustomItems() {
     const items = [];
     rows.forEach(row => {
         const name = row.querySelector('.especie-custom-name').value.trim();
-        const ad = parseRawEuro(row.querySelector('.especie-custom-ad').value) * 12;
-        const fl = parseRawEuro(row.querySelector('.especie-custom-fl').value) * 12;
-        if (ad <= 0 && fl <= 0) return;
-        items.push({ nombre: name || 'Concepto en especie', adicional: ad, flexible: fl });
+        const isDin = row.querySelector('.especie-din-chk').checked;
+        if (isDin) {
+            const importe = parseRawEuro(row.querySelector('.especie-custom-din').value) * 12;
+            if (importe <= 0) return;
+            items.push({ nombre: name || 'Complemento dinerario', dinerario: importe });
+        } else {
+            const ad = parseRawEuro(row.querySelector('.especie-custom-ad').value) * 12;
+            const fl = parseRawEuro(row.querySelector('.especie-custom-fl').value) * 12;
+            if (ad <= 0 && fl <= 0) return;
+            items.push({ nombre: name || 'Concepto en especie', adicional: ad, flexible: fl });
+        }
     });
     return items;
 }
@@ -708,8 +725,10 @@ function calcular(scroll = false) {
 
     // Custom non-exempt items (dynamic rows)
     const customItems = getEspecieCustomItems();
-    const customAdicional = customItems.reduce((s, i) => s + i.adicional, 0);
-    const customFlexible  = customItems.reduce((s, i) => s + i.flexible, 0);
+    const customEspecie = customItems.filter(i => !i.dinerario);
+    const customDinAnual = customItems.filter(i => i.dinerario).reduce((s, i) => s + i.dinerario, 0);
+    const customAdicional = customEspecie.reduce((s, i) => s + i.adicional, 0);
+    const customFlexible  = customEspecie.reduce((s, i) => s + i.flexible, 0);
 
     // Exempt limits (shared across ad+fl for the same concept)
     const limSegMedico = espSeguroMedicoBenef * (
@@ -753,7 +772,7 @@ function calcular(scroll = false) {
     bonusItems.forEach(b => {
         bonusPorMes[b.mes] = (bonusPorMes[b.mes] || 0) + b.importe;
     });
-    const brutoConBonus = bruto + bonusTotal;
+    const brutoConBonus = bruto + bonusTotal + customDinAnual;
 
     if (cnaeInput) {
         const result = buscarTarifaAT(cnaeInput);
@@ -779,7 +798,7 @@ function calcular(scroll = false) {
     const baseMax = BASES.max;
 
     // Per-month SS base (bonus months may hit a higher capped base)
-    const brutoMensual = bruto / 12;
+    const brutoMensual = (bruto + customDinAnual) / 12;
     let totalSSbaseAnual = 0;
     for (let m = 1; m <= 12; m++) {
         const brutoMes = brutoMensual + (bonusPorMes[m] || 0);
@@ -982,6 +1001,9 @@ function calcular(scroll = false) {
             flowRows.push([`+ Bonus puntual (${MESES_LABELS[b.mes - 1]})`, b.importe, false]);
         });
     }
+    customItems.filter(i => i.dinerario).forEach(i => {
+        flowRows.push([`+ ${i.nombre} (dinerario)`, i.dinerario, false]);
+    });
 
     // ── Especie adicional: employer pays on top ──
     if (totalAdicional > 0) {
@@ -990,7 +1012,7 @@ function calcular(scroll = false) {
         if (segMedicoAd > 0)  flowRows.push(['    Seguro médico (ad.)', segMedicoAd, false, true]);
         if (ticketRestAd > 0) flowRows.push(['    Ticket restaurante (ad.)', ticketRestAd, false, true]);
         if (transporteAd > 0) flowRows.push(['    Transporte (ad.)', transporteAd, false, true]);
-        customItems.filter(i => i.adicional > 0).forEach(i =>
+        customEspecie.filter(i => i.adicional > 0).forEach(i =>
             flowRows.push(['    ' + i.nombre + ' (ad.)', i.adicional, false, true]));
 
         if (exentaAdicional > 0) {
@@ -1060,7 +1082,7 @@ function calcular(scroll = false) {
         `<tr><td>Total IRPF</td><td class="text-right">${fmt(cuotaIRPF)} €</td><td class="text-right">${fmtPct(tipoIRPF)}</td></tr>`;
 
     // --- Pre-compute monthly values (needed by hero cards and monthly view) ---
-    const brutoPorPaga = bruto / numPagas;
+    const brutoPorPaga = (bruto + customDinAnual) / numPagas;
     const mensualSS = totalSSanual / 12;
     const mensualIRPF = cuotaIRPF / 12;
     const mensualFlex = totalFlexible / 12;
