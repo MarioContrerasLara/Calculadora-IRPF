@@ -879,15 +879,18 @@ function calcular(scroll = false) {
         // Subtotal row for Cuota de Solidaridad
         const solSubW = solidaridad.worker;
         const solSubE = solidaridad.employer;
+        const solTipoW = solidaridad.tramos.reduce((s, t) => s + t.tipoW, 0);
+        const solTipoE = solidaridad.tramos.reduce((s, t) => s + t.tipoE, 0);
+        const solTipoTotal = solidaridad.tramos.reduce((s, t) => s + t.tipoTotal, 0);
         tbSS.innerHTML +=
             `<tr class="ss-solidarity ss-solidarity-subtotal">` +
             `<td><strong>Subtotal C. Solidaridad</strong></td>` +
             `<td>—</td>` +
-            `<td>—</td>` +
+            `<td>${fmtPct(solTipoW)}</td>` +
             `<td class="text-right"><strong>${fmt(solSubW)} €</strong></td>` +
-            `<td>—</td>` +
+            `<td>${fmtPct(solTipoE)}</td>` +
             `<td class="text-right"><strong>${fmt(solSubE)} €</strong></td>` +
-            `<td>—</td>` +
+            `<td>${fmtPct(solTipoTotal)}</td>` +
             `<td class="text-right"><strong>${fmt(solSubW + solSubE)} €</strong></td>` +
             `</tr>`;
     }
