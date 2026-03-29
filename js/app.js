@@ -66,6 +66,7 @@ const BASES_BY_YEAR = {
     2023: { max: 4495.50, minByGroup: { 1: 1759.50, 2: 1459.20, 3: 1269.30, 4: 1260.00 } },
     2024: { max: 4720.50, minByGroup: { 1: 1847.40, 2: 1532.10, 3: 1332.90, 4: 1323.00 } },
     2025: { max: 4909.50, minByGroup: { 1: 1929.00, 2: 1599.60, 3: 1391.70, 4: 1381.20 } },
+    2026: { max: 5101.20, minByGroup: { 1: 1929.00, 2: 1599.60, 3: 1391.70, 4: 1381.20 } },
 };
 
 // Bases de cotización mensuales (default: 2025 — overridden at runtime by selected year)
