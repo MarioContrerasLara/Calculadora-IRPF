@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora IRPF + Seguridad Social 2026 — Andalucía</title>
-    <link rel="stylesheet" href="css/styles.css?v=14">
+    <link rel="stylesheet" href="css/styles.css?v=15">
 </head>
 <body>
 
@@ -96,6 +96,16 @@
                 <small class="field-hint" id="cnaeHint">Si se indica, se usará la tarifa AT y EP oficial. Si no, se aplica 2,00&nbsp;%.</small>
             </div>
         </div>
+
+        <!-- BONUS PUNTUAL (collapsible) -->
+        <details class="especie-collapsible" id="bonusDetails">
+            <summary class="especie-toggle">🎯 Bonus puntuales <small>(opcional)</small></summary>
+            <div class="especie-body">
+                <p class="hint">Añade uno o varios bonus. Cada uno se suma al bruto anual para el IRPF y su base SS se aplica en el mes indicado.</p>
+                <div id="bonusList"></div>
+                <button type="button" class="btn-add-especie" onclick="addBonus()">＋ Añadir bonus</button>
+            </div>
+        </details>
 
         <!-- RETRIBUCIÓN EN ESPECIE (collapsible) -->
         <details class="especie-collapsible" id="especieDetails">
@@ -330,7 +340,7 @@
     Herramienta orientativa — no sustituye al asesoramiento profesional.
 </footer>
 
-<script src="js/tarifa-at.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
+<script src="js/tarifa-at.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
 </body>
 </html>

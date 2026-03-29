@@ -504,6 +504,53 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
 
 let espCustomCounter = 0;
 
+// =============================================================
+//  BONUS PUNTUALES
+// =============================================================
+let bonusCounter = 0;
+const MESES_LABELS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function addBonus() {
+    bonusCounter++;
+    const row = document.createElement('div');
+    row.className = 'especie-custom-row';
+    row.id = 'bonusRow' + bonusCounter;
+    const opts = MESES_LABELS.map((m, i) =>
+        `<option value="${i + 1}"${i === 11 ? ' selected' : ''}>${m}</option>`
+    ).join('');
+    row.innerHTML =
+        `<input type="text" class="bonus-importe" placeholder="Importe (€)" inputmode="decimal" autocomplete="off">` +
+        `<select class="bonus-mes">${opts}</select>` +
+        `<button type="button" class="btn-remove-especie" onclick="removeBonus(this)" title="Eliminar">✕</button>`;
+    document.getElementById('bonusList').appendChild(row);
+    row.querySelector('.bonus-importe').addEventListener('input', () => scheduleCalcGlobal());
+    row.querySelector('.bonus-mes').addEventListener('change', () => scheduleCalcGlobal());
+    row.querySelector('.bonus-importe').focus();
+}
+
+function removeBonus(btn) {
+    btn.closest('.especie-custom-row').remove();
+    scheduleCalcGlobal();
+}
+
+function getBonusItems() {
+    return Array.from(document.querySelectorAll('#bonusList .especie-custom-row')).map(row => {
+        const raw = row.querySelector('.bonus-importe').value.replace(/[^\d,.\-]/g, '');
+        let importe = 0;
+        if (raw) {
+            let n = raw;
+            if (raw.includes(',')) n = raw.replace(/\./g, '').replace(',', '.');
+            const f = parseFloat(n);
+            importe = isNaN(f) || f < 0 ? 0 : f;
+        }
+        const mes = parseInt(row.querySelector('.bonus-mes').value, 10);
+        return { importe, mes };
+    }).filter(b => b.importe > 0);
+}
+
+// Placeholder overwritten once calcular auto-recalc is set up
+let scheduleCalcGlobal = function() {};
+
 function addEspecieCustom() {
     espCustomCounter++;
     const row = document.createElement('div');
@@ -698,6 +745,16 @@ function calcular(scroll = false) {
     let cnaeInfo = null;
     const cnaeHint = document.getElementById('cnaeHint');
 
+    // ── Bonus puntuales ──
+    const bonusItems = getBonusItems();
+    const bonusTotal = bonusItems.reduce((s, b) => s + b.importe, 0);
+    // Per-month bonus map (month 1–12 → total bonus in that month)
+    const bonusPorMes = {};
+    bonusItems.forEach(b => {
+        bonusPorMes[b.mes] = (bonusPorMes[b.mes] || 0) + b.importe;
+    });
+    const brutoConBonus = bruto + bonusTotal;
+
     if (cnaeInput) {
         const result = buscarTarifaAT(cnaeInput);
         if (result) {
@@ -720,7 +777,18 @@ function calcular(scroll = false) {
 
     const baseMin = BASES.minByGroup[grupo] || BASES.minByGroup[4];
     const baseMax = BASES.max;
-    const baseSSmensual = Math.min(Math.max(bruto / 12, baseMin), baseMax);
+
+    // Per-month SS base (bonus months may hit a higher capped base)
+    const brutoMensual = bruto / 12;
+    let totalSSbaseAnual = 0;
+    for (let m = 1; m <= 12; m++) {
+        const brutoMes = brutoMensual + (bonusPorMes[m] || 0);
+        const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
+        totalSSbaseAnual += baseMes;
+    }
+    // Display base (weighted average) and representative base for ordinary months
+    const baseSSmensualSinBonus = Math.min(Math.max(brutoMensual, baseMin), baseMax);
+    const baseSSmensual = totalSSbaseAnual / 12;
 
     const desempleoW = SS_DESEMPLEO_WORKER[contrato];
     const conceptosSS = [
@@ -732,14 +800,14 @@ function calcular(scroll = false) {
 
     let totalSSanual = 0;
     const detalleSS = conceptosSS.map(c => {
-        const anual = baseSSmensual * (c.tipo / 100) * 12;
+        const anual = totalSSbaseAnual * (c.tipo / 100);
         totalSSanual += anual;
         return { ...c, base: baseSSmensual, anual };
     });
 
     // Cuota de solidaridad (DA 50ª LGSS) — exceso de salario anual sobre BM anual
     const maxBaseAnual = baseMax * 12;
-    const solidaridad = calcSolidaridad(bruto, maxBaseAnual, anio);
+    const solidaridad = calcSolidaridad(brutoConBonus, maxBaseAnual, anio);
     totalSSanual += solidaridad.worker;
 
     // ───────────────────────────────────────────
@@ -747,7 +815,7 @@ function calcular(scroll = false) {
     // ───────────────────────────────────────────
 
     // Adicional gravada adds ON TOP of bruto; flexible exenta reduces taxable base (already in bruto)
-    const rendIntegro = bruto + gravadaAdicional - exentaFlexible;
+    const rendIntegro = brutoConBonus + gravadaAdicional - exentaFlexible;
     const gastosDeducibles = totalSSanual + OTROS_GASTOS;
     const rendNeto = Math.max(rendIntegro - gastosDeducibles, 0);
     const reduccion = reduccionRendimientos(rendNeto);
@@ -772,7 +840,7 @@ function calcular(scroll = false) {
     let cuotaIRPF = cuotaEstatal + cuotaAutonomica;
 
     // SMI exento de retención (Art. 81 bis RIRPF)
-    if (bruto <= SMI_ANUAL) {
+    if (brutoConBonus <= SMI_ANUAL) {
         cuotaEstatal = 0;
         cuotaAutonomica = 0;
         cuotaIRPF = 0;
@@ -783,9 +851,9 @@ function calcular(scroll = false) {
     // ───────────────────────────────────────────
 
     let ahorroFlexible = 0;
-    if (exentaFlexible > 0 && bruto > SMI_ANUAL) {
+    if (exentaFlexible > 0 && brutoConBonus > SMI_ANUAL) {
         // Recalculate IRPF as if no flexible exemption existed
-        const rendIntSinFlex = bruto + gravadaAdicional;
+        const rendIntSinFlex = brutoConBonus + gravadaAdicional;
         const rendNetoSinFlex = Math.max(rendIntSinFlex - gastosDeducibles, 0);
         const reducSinFlex = reduccionRendimientos(rendNetoSinFlex);
         const blSinFlex = Math.max(rendNetoSinFlex - reducSinFlex, 0);
@@ -799,9 +867,9 @@ function calcular(scroll = false) {
     // ───────────────────────────────────────────
 
     // Neto = what arrives in the bank account (cash)
-    const neto = bruto - totalFlexible - totalSSanual - cuotaIRPF;
-    const tipoTotal = bruto > 0 ? ((totalSSanual + cuotaIRPF) / bruto) * 100 : 0;
-    const tipoIRPF = bruto > 0 ? (cuotaIRPF / bruto) * 100 : 0;
+    const neto = brutoConBonus - totalFlexible - totalSSanual - cuotaIRPF;
+    const tipoTotal = brutoConBonus > 0 ? ((totalSSanual + cuotaIRPF) / brutoConBonus) * 100 : 0;
+    const tipoIRPF = brutoConBonus > 0 ? (cuotaIRPF / brutoConBonus) * 100 : 0;
 
     // ───────────────────────────────────────────
     //  5. COSTE EMPRESA
@@ -819,13 +887,13 @@ function calcular(scroll = false) {
 
     let totalEmpAnual = 0;
     const detalleEmp = conceptosEmp.map(c => {
-        const anual = baseSSmensual * (c.tipo / 100) * 12;
+        const anual = totalSSbaseAnual * (c.tipo / 100);
         totalEmpAnual += anual;
         return { ...c, anual };
     });
     totalEmpAnual += solidaridad.employer;
     // Only adicional adds cost; flexible is already inside bruto
-    const costeTotal = bruto + totalEmpAnual + totalAdicional;
+    const costeTotal = brutoConBonus + totalEmpAnual + totalAdicional;
 
     // ===========================
     //  RENDER
@@ -909,6 +977,11 @@ function calcular(scroll = false) {
     const flowRows = [
         ['Salario bruto dinerario', bruto, false],
     ];
+    if (bonusItems.length > 0) {
+        bonusItems.forEach(b => {
+            flowRows.push([`+ Bonus puntual (${MESES_LABELS[b.mes - 1]})`, b.importe, false]);
+        });
+    }
 
     // ── Especie adicional: employer pays on top ──
     if (totalAdicional > 0) {
@@ -995,8 +1068,14 @@ function calcular(scroll = false) {
 
     // --- 7. Hero cards (annual summary) ---
     const heroData = [
-        { lbl: 'Salario bruto', val: fmt(bruto) + ' €', cls: '' },
+        { lbl: 'Salario bruto anual', val: fmt(bruto) + ' €', cls: '' },
     ];
+    if (bonusItems.length > 0) {
+        bonusItems.forEach(b => {
+            heroData.push({ lbl: `Bonus (${MESES_LABELS[b.mes - 1]})`, val: fmt(b.importe) + ' €', cls: '' });
+        });
+        heroData.push({ lbl: 'Bruto total (con bonus)', val: fmt(brutoConBonus) + ' €', cls: '' });
+    }
     if (totalAdicional > 0) {
         heroData.push({ lbl: 'Especie adicional', val: fmt(totalAdicional) + ' €', cls: '' });
     }
@@ -1025,21 +1104,35 @@ function calcular(scroll = false) {
     ).join('');
 
     // --- Monthly view ---
-
     document.getElementById('monthlyHint').textContent =
         numPagas === 14
             ? 'La Seguridad Social y la retención IRPF se descuentan en 12 mensualidades. Las pagas extra (junio y diciembre) son íntegras (' + fmt(brutoPorPaga) + ' €).'
             : 'Con 12 pagas, todas las deducciones se reparten en cada mensualidad.';
 
+    const mensualSSsinBonus = conceptosSS.reduce((s, c) => s + baseSSmensualSinBonus * (c.tipoW / 100), 0);
+
     const monthItems = [
         { lbl: 'Bruto / paga', val: fmt(brutoPorPaga) + ' €' },
-        { lbl: 'SS / mes (×12)', val: fmt(mensualSS) + ' €' },
+        { lbl: 'SS / mes ordinario', val: fmt(mensualSSsinBonus) + ' €' },
         { lbl: 'IRPF / mes (×12)', val: fmt(mensualIRPF) + ' €' },
     ];
     if (totalFlexible > 0) {
         monthItems.push({ lbl: 'Especie flexible / mes', val: fmt(mensualFlex) + ' €' });
     }
     monthItems.push({ lbl: 'Neto mes ordinario', val: fmt(netoMesOrdinario) + ' €' });
+
+    // Show each bonus month (aggregate bonuses by month)
+    Object.entries(bonusPorMes).sort((a, b) => a[0] - b[0]).forEach(([mesStr, mesBonus]) => {
+        const mes = parseInt(mesStr, 10);
+        const brutoMes = brutoMensual + mesBonus;
+        const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
+        const ssMes = conceptosSS.reduce((s, c) => s + baseMes * (c.tipoW / 100), 0);
+        const netoMes = brutoPorPaga + mesBonus - ssMes - mensualIRPF - mensualFlex;
+        monthItems.push({ lbl: `Bruto ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(brutoPorPaga + mesBonus) + ' €' });
+        monthItems.push({ lbl: `SS ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(ssMes) + ' €' });
+        monthItems.push({ lbl: `Neto ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(netoMes) + ' €' });
+    });
+
     if (numPagas === 14) {
         monthItems.push({ lbl: 'Paga extra (íntegra)', val: fmt(brutoPorPaga) + ' €' });
     }
@@ -1048,14 +1141,14 @@ function calcular(scroll = false) {
     ).join('');
 
     // --- 8. Pie chart: salary breakdown ---
-    if (bruto > 0) {
+    if (brutoConBonus > 0) {
         const slices = [
             { label: 'Neto', value: Math.max(neto, 0), color: 'var(--brand)' },
             { label: 'SS trabajador', value: totalSSanual, color: 'var(--orange)' },
             { label: 'IRPF estatal', value: cuotaEstatal, color: 'var(--blue)' },
             { label: 'IRPF autonómico', value: cuotaAutonomica, color: 'var(--accent)' },
         ];
-        renderPie('pieChart', 'pieLegend', slices, bruto);
+        renderPie('pieChart', 'pieLegend', slices, brutoConBonus);
     }
 
     // --- 9. Iceberg diagram ---
@@ -1084,6 +1177,9 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
         clearTimeout(_timer);
         _timer = setTimeout(calcular, 400);
     }
+
+    // Expose globally for dynamically-added bonus rows
+    scheduleCalcGlobal = scheduleCalc;
 
     // Text / number inputs — debounced
     ['bruto', 'anio', 'cnae'].forEach(id => {
