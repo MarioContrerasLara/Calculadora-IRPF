@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora IRPF + Seguridad Social 2025 — Andalucía</title>
+    <title>Calculadora IRPF + Seguridad Social 2026 — Andalucía</title>
     <link rel="stylesheet" href="css/styles.css?v=10">
 </head>
 <body>
 
 <header>
-    <h1>🇪🇸 Calculadora IRPF + Seguridad Social 2025</h1>
+    <h1>🇪🇸 Calculadora IRPF + Seguridad Social <span id="headerAnio">2026</span></h1>
     <p>Régimen General · Comunidad Autónoma de Andalucía</p>
 </header>
 <div class="flag-bar"></div>
@@ -27,7 +27,7 @@
             </div>
             <div class="form-group">
                 <label for="anio">Año fiscal</label>
-                <input type="number" id="anio" value="2026" min="2023" max="2029" inputmode="numeric" autocomplete="off">
+                <input type="number" id="anio" value="2026" min="2023" max="2029" inputmode="numeric" autocomplete="off" oninput="const y=this.value||'2026';document.getElementById('headerAnio').textContent=y;document.title='Calculadora IRPF + Seguridad Social '+y+' — Andalucía';">
                 <small class="field-hint">MEI aplicable: 2023–2029</small>
             </div>
             <div class="form-group">
