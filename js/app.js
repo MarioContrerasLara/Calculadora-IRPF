@@ -748,10 +748,12 @@ function calcular() {
             `</tr>`;
     }).join('');
     const totalCombAnual = totalSSanual + totalEmpAnual;
-    const totalCombTipo = ssConceptos.reduce((s, c) => s + c.tipoW + c.tipoE, 0);
+    const totalWorkerTipo = ssConceptos.reduce((s, c) => s + c.tipoW, 0);
+    const totalEmpTipo = ssConceptos.reduce((s, c) => s + c.tipoE, 0);
+    const totalCombTipo = totalWorkerTipo + totalEmpTipo;
     tfSS.innerHTML = `<tr><td colspan="2">Total</td>` +
-        `<td></td><td class="text-right">${fmt(totalSSanual)} €</td>` +
-        `<td></td><td class="text-right">${fmt(totalEmpAnual)} €</td>` +
+        `<td>${fmtPct(totalWorkerTipo)}</td><td class="text-right">${fmt(totalSSanual)} €</td>` +
+        `<td>${fmtPct(totalEmpTipo)}</td><td class="text-right">${fmt(totalEmpAnual)} €</td>` +
         `<td>${fmtPct(totalCombTipo)}</td><td class="text-right">${fmt(totalCombAnual)} €</td></tr>`;
 
     // --- 2. IRPF flow ---
