@@ -489,54 +489,16 @@ footer a { color: var(--brand); }
     z-index: 4;
 }
 
-/* ─ Single unified iceberg shape ─ */
-.ice-berg {
+/* ─ SVG iceberg ─ */
+.ice-svg {
     position: absolute;
     left: 50%;
-    top: 3%;
+    top: 18px;
     transform: translateX(-50%);
     width: 280px;
-    height: 520px;
-    clip-path: polygon(
-        50% 0%,
-        100% 36%,
-        96% 47%,
-        89% 59%,
-        79% 71%,
-        66% 82%,
-        55% 90%,
-        50% 94%,
-        45% 90%,
-        34% 82%,
-        21% 71%,
-        11% 59%,
-        4% 47%,
-        0% 36%
-    );
+    height: auto;
     z-index: 3;
-    /* white/ice for the above-water triangle */
-    background: linear-gradient(180deg, #f8fafc 0%, #cddde9 36%);
-}
-.ice-above {
-    display: none; /* background handled on parent */
-}
-.ice-below {
-    position: absolute;
-    left: 0; right: 0;
-    top: 36%;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-}
-.ice-body-worker {
-    background: rgba(100, 195, 220, 0.85);
-    flex: 0 0 auto;
-    width: 100%;
-}
-.ice-body-employer {
-    background: rgba(200, 165, 45, 0.80);
-    flex: 1 1 auto;
-    width: 100%;
+    overflow: visible;
 }
 
 /* ─ Flag ─ */
@@ -664,8 +626,7 @@ footer a { color: var(--brand); }
     .ice-label-employee { left: 2%; }
     .ice-label-employer { right: 2%; }
     .ice-connector { width: 50px !important; }
-    .ice-tip { width: 160px; height: 100px; }
-    .ice-body { width: 200px; height: 220px; }
+    .ice-svg { width: 200px; }
     .ice-summary { grid-template-columns: 1fr; }
     .ice-card .ice-card-value { font-size: 1.5rem; }
     .ice-card { padding: 1.2rem 1.25rem; }

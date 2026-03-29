@@ -319,10 +319,16 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const brutoVisible = netoClean + workerTax;
     const apparentRate = brutoVisible > 0 ? (workerTax / brutoVisible * 100) : 0;
 
-    // Iceberg body: split proportionally between worker taxes and employer taxes
-    const workerPct = totalTax > 0 ? (workerTax / totalTax * 100) : 50;
-    document.getElementById('iceBodyWorker').style.flex = workerPct + ' 0 auto';
-    document.getElementById('iceBodyEmployer').style.flex = (100 - workerPct) + ' 0 auto';
+    // Iceberg SVG: split body proportionally between worker and employer taxes
+    const BODY_TOP = 195, BODY_H = 216;
+    const workerPct = totalTax > 0 ? (workerTax / totalTax) : 0.5;
+    const workerPx = Math.round(workerPct * BODY_H);
+    const wRect = document.getElementById('iceWorkerRect');
+    const eRect = document.getElementById('iceEmployerRect');
+    wRect.setAttribute('y', BODY_TOP);
+    wRect.setAttribute('height', workerPx);
+    eRect.setAttribute('y', BODY_TOP + workerPx);
+    eRect.setAttribute('height', BODY_H - workerPx);
 
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =

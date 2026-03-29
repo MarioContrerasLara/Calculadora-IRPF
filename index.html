@@ -280,14 +280,21 @@
                 <div class="ice-water-bg"></div>
                 <!-- Waterline shimmer -->
                 <div class="ice-waterline"></div>
-                <!-- Single unified iceberg shape -->
-                <div class="ice-berg">
-                    <div class="ice-above"></div>
-                    <div class="ice-below">
-                        <div class="ice-body-worker" id="iceBodyWorker"></div>
-                        <div class="ice-body-employer" id="iceBodyEmployer"></div>
-                    </div>
-                </div>
+                <!-- SVG iceberg -->
+                <svg class="ice-svg" viewBox="0 0 280 415" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="ice-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#f8fafc"/>
+                            <stop offset="100%" stop-color="#ccdde9"/>
+                        </linearGradient>
+                        <clipPath id="body-clip">
+                            <polygon points="0,195 280,195 258,230 252,277 232,324 202,364 162,392 140,411 118,392 78,364 48,324 28,277 22,230"/>
+                        </clipPath>
+                    </defs>
+                    <polygon points="140,0 280,195 0,195" fill="url(#ice-grad)"/>
+                    <rect id="iceWorkerRect" x="0" y="195" width="280" height="108" fill="rgba(100,195,220,0.85)" clip-path="url(#body-clip)"/>
+                    <rect id="iceEmployerRect" x="0" y="303" width="280" height="108" fill="rgba(185,150,35,0.85)" clip-path="url(#body-clip)"/>
+                </svg>
                 <!-- Flag -->
                 <div class="ice-flag">🇪🇸</div>
                 <!-- Labels -->
