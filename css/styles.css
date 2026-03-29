@@ -527,18 +527,26 @@ footer a { color: var(--brand); }
     line-height: 1.4;
 }
 .ice-connector {
-    display: block;
-    margin-top: 6px;
-    border-top: 2px dotted rgba(210,185,70,.7);
+    display: inline-block;
+    flex: 1;
+    min-width: 20px;
+    border-bottom: 2px dotted rgba(210,185,70,.7);
     position: relative;
+    vertical-align: middle;
 }
 .ice-connector-dot {
     position: absolute;
-    top: -5px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: rgba(210,185,70,.9);
+}
+.ice-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* ─ Label: Net pay (sky, top-left) ─ */
@@ -564,7 +572,7 @@ footer a { color: var(--brand); }
 }
 .ice-label-employer .ice-val { color: #fff; }
 .ice-label-employer .ice-lbl-text { color: rgba(255,255,255,.65); }
-.ice-label-employer .ice-connector { margin-left: auto; }
+.ice-label-employer .ice-connector { margin-right: auto; }
 .ice-label-employer .ice-connector-dot { left: -4px; }
 
 /* ─ Whale ─ */
