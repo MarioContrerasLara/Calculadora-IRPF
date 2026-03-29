@@ -1109,7 +1109,7 @@ function calcular(scroll = false) {
             ? 'La Seguridad Social y la retención IRPF se descuentan en 12 mensualidades. Las pagas extra (junio y diciembre) son íntegras (' + fmt(brutoPorPaga) + ' €).'
             : 'Con 12 pagas, todas las deducciones se reparten en cada mensualidad.';
 
-    const mensualSSsinBonus = conceptosSS.reduce((s, c) => s + baseSSmensualSinBonus * (c.tipoW / 100), 0);
+    const mensualSSsinBonus = conceptosSS.reduce((s, c) => s + baseSSmensualSinBonus * (c.tipo / 100), 0);
 
     const monthItems = [
         { lbl: 'Bruto / paga', val: fmt(brutoPorPaga) + ' €' },
@@ -1126,7 +1126,7 @@ function calcular(scroll = false) {
         const mes = parseInt(mesStr, 10);
         const brutoMes = brutoMensual + mesBonus;
         const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
-        const ssMes = conceptosSS.reduce((s, c) => s + baseMes * (c.tipoW / 100), 0);
+        const ssMes = conceptosSS.reduce((s, c) => s + baseMes * (c.tipo / 100), 0);
         const netoMes = brutoPorPaga + mesBonus - ssMes - mensualIRPF - mensualFlex;
         monthItems.push({ lbl: `Bruto ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(brutoPorPaga + mesBonus) + ' €' });
         monthItems.push({ lbl: `SS ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(ssMes) + ' €' });
