@@ -493,7 +493,7 @@ footer a { color: var(--brand); }
 .ice-tip {
     position: absolute;
     left: 50%;
-    top: 16%;
+    top: 15%;
     transform: translateX(-50%);
     width: 240px;
     height: 130px;
