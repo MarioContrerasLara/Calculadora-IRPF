@@ -504,7 +504,7 @@ function getEspecieCustomItems() {
 //  CÁLCULO PRINCIPAL
 // =============================================================
 
-function calcular() {
+function calcular(scroll = false) {
     // Parse input — accept both "30.000" and "30000,50" formats
     const raw = document.getElementById('bruto').value.replace(/[^\d,.\-]/g, '');
     let norm = raw;
@@ -928,8 +928,8 @@ function calcular() {
     // --- 9. Iceberg diagram ---
     renderIceberg(neto, totalSSanual, cuotaEstatal, cuotaAutonomica, totalEmpAnual, totalAdicional, totalFlexible, costeTotal);
 
-    // Scroll to results
-    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll to results only on explicit user action
+    if (scroll) document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Allow Enter key
