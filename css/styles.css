@@ -513,21 +513,20 @@ footer a { color: var(--brand); }
         4% 47%,
         0% 36%
     );
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
     z-index: 3;
+    /* white/ice for the above-water triangle */
+    background: linear-gradient(180deg, #f8fafc 0%, #cddde9 36%);
 }
 .ice-above {
-    height: 36%;
-    flex-shrink: 0;
-    background: linear-gradient(180deg, #f8fafc 0%, #e4eff6 50%, #cddde9 100%);
+    display: none; /* background handled on parent */
 }
 .ice-below {
-    flex: 1;
+    position: absolute;
+    left: 0; right: 0;
+    top: 36%;
+    bottom: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 .ice-body-worker {
     background: rgba(100, 195, 220, 0.85);

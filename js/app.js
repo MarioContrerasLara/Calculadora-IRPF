@@ -321,8 +321,8 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
 
     // Iceberg body: split proportionally between worker taxes and employer taxes
     const workerPct = totalTax > 0 ? (workerTax / totalTax * 100) : 50;
-    document.getElementById('iceBodyWorker').style.height = workerPct + '%';
-    document.getElementById('iceBodyEmployer').style.height = (100 - workerPct) + '%';
+    document.getElementById('iceBodyWorker').style.flex = workerPct + ' 0 auto';
+    document.getElementById('iceBodyEmployer').style.flex = (100 - workerPct) + ' 0 auto';
 
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
