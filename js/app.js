@@ -223,7 +223,7 @@ const fmt = n => n.toLocaleString('es-ES', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
 });
-const fmtPct = n => fmt(n) + ' %';
+const fmtPct = n => fmt(n) + '\xa0%';
 const fmtTramo = (d, h) =>
     h === Infinity ? fmt(d) + ' en adelante' : fmt(d) + ' — ' + fmt(h);
 
