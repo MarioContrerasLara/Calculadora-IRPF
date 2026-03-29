@@ -495,7 +495,7 @@ footer a { color: var(--brand); }
     left: 50%;
     top: 3%;
     transform: translateX(-50%);
-    width: 380px;
+    width: 260px;
     height: 210px;
     clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
     background: linear-gradient(180deg, #f0f6f9 0%, #dceaf0 40%, #c8d8e4 100%);
@@ -531,7 +531,7 @@ footer a { color: var(--brand); }
 .ice-flag {
     position: absolute;
     left: 50%;
-    top: 14%;
+    top: 2%;
     transform: translateX(-50%);
     font-size: 1.6rem;
     z-index: 5;
