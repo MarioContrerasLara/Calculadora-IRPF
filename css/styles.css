@@ -489,40 +489,53 @@ footer a { color: var(--brand); }
     z-index: 4;
 }
 
-/* ─ Iceberg tip (above water) ─ */
-.ice-tip {
+/* ─ Single unified iceberg shape ─ */
+.ice-berg {
     position: absolute;
     left: 50%;
-    top: 5%;       /* 5%×560=28px; 28+185=213px ≈ waterline (38%×560=212.8px) */
+    top: 3%;
     transform: translateX(-50%);
     width: 280px;
-    height: 185px;
-    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-    background: linear-gradient(180deg, #f8fafc 0%, #e2eef5 45%, #ccdde8 100%);
-    z-index: 3;
-}
-
-/* ─ Iceberg body (below water) ─ */
-.ice-body {
-    position: absolute;
-    left: 50%;
-    top: 38%;
-    transform: translateX(-50%);
-    width: 280px;
-    height: 260px;
-    clip-path: polygon(0% 0%, 100% 0%, 92% 15%, 88% 30%, 82% 50%, 72% 68%, 60% 82%, 50% 90%, 40% 82%, 28% 68%, 18% 50%, 12% 30%, 8% 15%);
+    height: 520px;
+    clip-path: polygon(
+        50% 0%,
+        100% 36%,
+        96% 47%,
+        89% 59%,
+        79% 71%,
+        66% 82%,
+        55% 90%,
+        50% 94%,
+        45% 90%,
+        34% 82%,
+        21% 71%,
+        11% 59%,
+        4% 47%,
+        0% 36%
+    );
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    z-index: 2;
+    z-index: 3;
+}
+.ice-above {
+    height: 36%;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #f8fafc 0%, #e4eff6 50%, #cddde9 100%);
+}
+.ice-below {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 .ice-body-worker {
-    background: rgba(100, 195, 220, 0.70);
+    background: rgba(100, 195, 220, 0.85);
     flex: 0 0 auto;
     width: 100%;
 }
 .ice-body-employer {
-    background: rgba(210, 175, 55, 0.55);
+    background: rgba(200, 165, 45, 0.80);
     flex: 1 1 auto;
     width: 100%;
 }
@@ -531,7 +544,7 @@ footer a { color: var(--brand); }
 .ice-flag {
     position: absolute;
     left: 50%;
-    top: 2%;
+    top: 3%;
     transform: translateX(-50%);
     font-size: 1.6rem;
     z-index: 5;
