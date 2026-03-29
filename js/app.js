@@ -944,8 +944,10 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
 (function () {
     let _timer = null;
     function scheduleCalc() {
-        const bruto = document.getElementById('bruto').value.replace(/[^\d,.]/g, '');
-        if (!bruto) return;  // don't recalc on empty salary
+        const raw = document.getElementById('bruto').value.replace(/[^\d,.]/g, '');
+        if (!raw) return;
+        const val = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+        if (!val || val <= 0) return;  // don't recalc on 0 or invalid
         clearTimeout(_timer);
         _timer = setTimeout(calcular, 400);
     }
