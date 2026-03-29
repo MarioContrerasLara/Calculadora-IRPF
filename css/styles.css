@@ -495,10 +495,10 @@ footer a { color: var(--brand); }
     left: 50%;
     top: 16%;
     transform: translateX(-50%);
-    width: 36px;
+    width: 240px;
     height: 130px;
-    clip-path: polygon(45% 0%, 55% 2%, 70% 55%, 72% 100%, 28% 100%, 30% 55%);
-    background: linear-gradient(180deg, #fff 0%, #eaf0f4 30%, #d8e2e8 70%, #c8d5dc 100%);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    background: linear-gradient(180deg, #f0f6f9 0%, #dceaf0 40%, #c8d8e4 100%);
     z-index: 3;
 }
 
@@ -531,7 +531,7 @@ footer a { color: var(--brand); }
 .ice-flag {
     position: absolute;
     left: 50%;
-    top: 12%;
+    top: 14%;
     transform: translateX(-50%);
     font-size: 1.6rem;
     z-index: 5;
@@ -652,7 +652,7 @@ footer a { color: var(--brand); }
     .ice-label-employee { left: 2%; }
     .ice-label-employer { right: 2%; }
     .ice-connector { width: 50px !important; }
-    .ice-tip { width: 45px; height: 90px; }
+    .ice-tip { width: 160px; height: 100px; }
     .ice-body { width: 200px; height: 220px; }
     .ice-summary { grid-template-columns: 1fr; }
     .ice-card .ice-card-value { font-size: 1.5rem; }
