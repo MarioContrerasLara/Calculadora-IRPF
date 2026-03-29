@@ -543,7 +543,6 @@ footer a { color: var(--brand); }
 
 /* ─ Label: Net pay (sky, top-left) ─ */
 .ice-label-net {
-    top: 16%;
     left: 5%;
 }
 .ice-label-net .ice-val { color: #0c3a50; }
@@ -553,7 +552,6 @@ footer a { color: var(--brand); }
 
 /* ─ Label: Employee taxes (water, left) ─ */
 .ice-label-employee {
-    top: 48%;
     left: 4%;
 }
 .ice-label-employee .ice-val { color: #7ec8e3; }
@@ -563,7 +561,6 @@ footer a { color: var(--brand); }
 
 /* ─ Label: Employer taxes (water, right) ─ */
 .ice-label-employer {
-    top: 60%;
     right: 5%;
     text-align: right;
 }

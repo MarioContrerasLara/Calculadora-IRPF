@@ -332,6 +332,17 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     eRect.setAttribute('y', splitY);
     eRect.setAttribute('height', bodyBot - splitY);
 
+    // Position labels at the midpoint of each zone
+    // SVG is 440 units tall, placed at top:15px inside a 560px scene
+    const svgTop = 15, sceneH = 560;
+    const netMidY   = svgTop + (0 + bodyTop) / 2;          // tip midpoint
+    const workerMidY = svgTop + (bodyTop + splitY) / 2;     // teal zone midpoint
+    const empMidY    = svgTop + (splitY + bodyBot) / 2;     // gold zone midpoint
+
+    document.getElementById('iceZoneNet').style.top      = (netMidY / sceneH * 100) + '%';
+    document.getElementById('iceZoneEmployee').style.top  = (workerMidY / sceneH * 100) + '%';
+    document.getElementById('iceZoneEmployer').style.top  = (empMidY / sceneH * 100) + '%';
+
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
         `<div class="ice-val">€ ${fmt(netoClean)}</div>` +
