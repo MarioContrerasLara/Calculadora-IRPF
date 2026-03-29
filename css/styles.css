@@ -493,12 +493,11 @@ footer a { color: var(--brand); }
 .ice-svg {
     position: absolute;
     left: 50%;
-    top: 18px;
+    top: 15px;
     transform: translateX(-50%);
-    width: 280px;
-    height: auto;
+    width: 300px;
+    height: 500px;
     z-index: 3;
-    overflow: visible;
 }
 
 /* ─ Flag ─ */
@@ -626,7 +625,7 @@ footer a { color: var(--brand); }
     .ice-label-employee { left: 2%; }
     .ice-label-employer { right: 2%; }
     .ice-connector { width: 50px !important; }
-    .ice-svg { width: 200px; }
+    .ice-svg { width: 220px; height: auto; }
     .ice-summary { grid-template-columns: 1fr; }
     .ice-card .ice-card-value { font-size: 1.5rem; }
     .ice-card { padding: 1.2rem 1.25rem; }

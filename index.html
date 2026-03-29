@@ -280,20 +280,20 @@
                 <div class="ice-water-bg"></div>
                 <!-- Waterline shimmer -->
                 <div class="ice-waterline"></div>
-                <!-- SVG iceberg -->
-                <svg class="ice-svg" viewBox="0 0 280 415" xmlns="http://www.w3.org/2000/svg">
+                <!-- Iceberg SVG: 3 zones in one shape -->
+                <svg class="ice-svg" viewBox="0 0 300 500" preserveAspectRatio="xMidYMid meet">
                     <defs>
-                        <linearGradient id="ice-grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#f8fafc"/>
-                            <stop offset="100%" stop-color="#ccdde9"/>
+                        <linearGradient id="tipGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#ffffff"/>
+                            <stop offset="100%" stop-color="#cddde9"/>
                         </linearGradient>
-                        <clipPath id="body-clip">
-                            <polygon points="0,195 280,195 258,230 252,277 232,324 202,364 162,392 140,411 118,392 78,364 48,324 28,277 22,230"/>
-                        </clipPath>
                     </defs>
-                    <polygon points="140,0 280,195 0,195" fill="url(#ice-grad)"/>
-                    <rect id="iceWorkerRect" x="0" y="195" width="280" height="108" fill="rgba(100,195,220,0.85)" clip-path="url(#body-clip)"/>
-                    <rect id="iceEmployerRect" x="0" y="303" width="280" height="108" fill="rgba(185,150,35,0.85)" clip-path="url(#body-clip)"/>
+                    <!-- Above-water triangle (tip) -->
+                    <path d="M150 0 L280 195 L20 195 Z" fill="url(#tipGrad)"/>
+                    <!-- Below-water worker zone -->
+                    <path id="iceWorkerPath" d="" fill="rgba(90,185,215,0.9)"/>
+                    <!-- Below-water employer zone -->
+                    <path id="iceEmployerPath" d="" fill="rgba(175,145,30,0.85)"/>
                 </svg>
                 <!-- Flag -->
                 <div class="ice-flag">🇪🇸</div>

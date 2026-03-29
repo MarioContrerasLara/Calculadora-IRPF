@@ -319,16 +319,45 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const brutoVisible = netoClean + workerTax;
     const apparentRate = brutoVisible > 0 ? (workerTax / brutoVisible * 100) : 0;
 
-    // Iceberg SVG: split body proportionally between worker and employer taxes
-    const BODY_TOP = 195, BODY_H = 216;
+    // ── Iceberg SVG: compute underwater body paths ──
+    // The underwater body outline (left side, from top-center to bottom-center)
+    // We trace the left side then mirror for right.
+    // Body spans from y=195 (waterline) to y=420 (bottom point)
+    const bodyLeft  = [[20,195],[10,220],[6,260],[10,300],[22,340],[44,375],[75,405],[110,425],[150,440]];
+    const bodyRight = [[280,195],[290,220],[294,260],[290,300],[278,340],[256,375],[225,405],[190,425],[150,440]];
+
+    // Split at a y-value determined by worker/employer ratio
+    const BODY_Y_TOP = 195, BODY_Y_BOT = 440;
     const workerPct = totalTax > 0 ? (workerTax / totalTax) : 0.5;
-    const workerPx = Math.round(workerPct * BODY_H);
-    const wRect = document.getElementById('iceWorkerRect');
-    const eRect = document.getElementById('iceEmployerRect');
-    wRect.setAttribute('y', BODY_TOP);
-    wRect.setAttribute('height', workerPx);
-    eRect.setAttribute('y', BODY_TOP + workerPx);
-    eRect.setAttribute('height', BODY_H - workerPx);
+    const splitY = BODY_Y_TOP + Math.round(workerPct * (BODY_Y_BOT - BODY_Y_TOP));
+
+    function interp(pts, y) {
+        for (let i = 0; i < pts.length - 1; i++) {
+            if (y >= pts[i][1] && y <= pts[i+1][1]) {
+                const t = (y - pts[i][1]) / (pts[i+1][1] - pts[i][1]);
+                return pts[i][0] + t * (pts[i+1][0] - pts[i][0]);
+            }
+        }
+        return pts[pts.length-1][0];
+    }
+
+    const splitXL = Math.round(interp(bodyLeft, splitY));
+    const splitXR = Math.round(interp(bodyRight, splitY));
+
+    function ptsAbove(side, sy) {
+        return side.filter(p => p[1] <= sy).map(p => p.join(',')).join(' ');
+    }
+    function ptsBelow(side, sy) {
+        return side.filter(p => p[1] >= sy).map(p => p.join(',')).join(' ');
+    }
+
+    // Worker path: waterline down to splitY
+    const wPath = `M${ptsAbove(bodyLeft,splitY).replaceAll(' ','L')} L${splitXL},${splitY} L${splitXR},${splitY} L${ptsAbove(bodyRight,splitY).split(' ').reverse().join('L')} Z`;
+    document.getElementById('iceWorkerPath').setAttribute('d', wPath);
+
+    // Employer path: splitY down to bottom
+    const ePath = `M${splitXL},${splitY} L${ptsBelow(bodyLeft,splitY).replaceAll(' ','L')} L${ptsBelow(bodyRight,splitY).split(' ').reverse().join('L')} L${splitXR},${splitY} Z`;
+    document.getElementById('iceEmployerPath').setAttribute('d', ePath);
 
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
