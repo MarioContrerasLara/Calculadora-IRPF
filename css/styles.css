@@ -493,12 +493,12 @@ footer a { color: var(--brand); }
 .ice-tip {
     position: absolute;
     left: 50%;
-    top: 3%;
+    top: 5%;       /* 5%×560=28px; 28+185=213px ≈ waterline (38%×560=212.8px) */
     transform: translateX(-50%);
-    width: 260px;
-    height: 210px;
+    width: 280px;
+    height: 185px;
     clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-    background: linear-gradient(180deg, #f0f6f9 0%, #dceaf0 40%, #c8d8e4 100%);
+    background: linear-gradient(180deg, #f8fafc 0%, #e2eef5 45%, #ccdde8 100%);
     z-index: 3;
 }
 
@@ -510,7 +510,7 @@ footer a { color: var(--brand); }
     transform: translateX(-50%);
     width: 280px;
     height: 260px;
-    clip-path: polygon(14% 0%, 86% 0%, 92% 15%, 90% 35%, 83% 55%, 72% 72%, 58% 86%, 50% 92%, 42% 86%, 28% 72%, 17% 55%, 10% 35%, 8% 15%);
+    clip-path: polygon(0% 0%, 100% 0%, 92% 15%, 88% 30%, 82% 50%, 72% 68%, 60% 82%, 50% 90%, 40% 82%, 28% 68%, 18% 50%, 12% 30%, 8% 15%);
     overflow: hidden;
     display: flex;
     flex-direction: column;
