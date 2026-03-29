@@ -512,10 +512,16 @@ function calcular(scroll = false) {
         norm = raw.replace(/\./g, '').replace(',', '.');
     }
     const bruto = parseFloat(norm);
-    if (isNaN(bruto) || bruto < 0) {
-        alert('Introduce un salario bruto anual válido.');
+    const brutoError = document.getElementById('brutoError');
+    if (isNaN(bruto) || bruto <= 0) {
+        if (scroll) {
+            document.getElementById('bruto').classList.add('input-error');
+            brutoError.textContent = 'Introduce un salario bruto anual válido.';
+        }
         return;
     }
+    document.getElementById('bruto').classList.remove('input-error');
+    brutoError.textContent = '';
 
     const anio = parseInt(document.getElementById('anio').value, 10);
     const meiRates = MEI_BY_YEAR[anio] || MEI_BY_YEAR[2026];
