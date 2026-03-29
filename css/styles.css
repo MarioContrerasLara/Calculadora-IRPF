@@ -333,6 +333,14 @@ input.input-error {
     margin-bottom: 1.25rem;
     overflow: hidden;
 }
+.tbl-section .tbl-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.tbl-ss-combined td.text-right,
+.tbl-ss-combined tfoot td.text-right {
+    white-space: nowrap;
+}
 .tbl-section h3 {
     padding: .85rem 1.25rem;
     font-size: .95rem;
