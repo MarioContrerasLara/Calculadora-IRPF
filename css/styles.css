@@ -493,10 +493,10 @@ footer a { color: var(--brand); }
 .ice-tip {
     position: absolute;
     left: 50%;
-    top: 15%;
+    top: 3%;
     transform: translateX(-50%);
-    width: 240px;
-    height: 130px;
+    width: 380px;
+    height: 210px;
     clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
     background: linear-gradient(180deg, #f0f6f9 0%, #dceaf0 40%, #c8d8e4 100%);
     z-index: 3;
