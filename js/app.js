@@ -515,13 +515,13 @@ function getEspecieCustomItems() {
 // =============================================================
 
 function calcular(scroll = false) {
-    // Parse input — accept both "30.000" and "30000,50" formats
+    // Parse input — accept both "30.000" and "30000,50" formats; max 2 decimals
     const raw = document.getElementById('bruto').value.replace(/[^\d,.\-]/g, '');
     let norm = raw;
     if (raw.includes(',')) {
         norm = raw.replace(/\./g, '').replace(',', '.');
     }
-    const bruto = parseFloat(norm);
+    const bruto = Math.round(parseFloat(norm) * 100) / 100;
     const brutoError = document.getElementById('brutoError');
     if (isNaN(bruto) || bruto <= 0) {
         if (scroll) {
