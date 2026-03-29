@@ -338,7 +338,8 @@ input.input-error {
     -webkit-overflow-scrolling: touch;
 }
 .tbl-ss-combined td.text-right,
-.tbl-ss-combined tfoot td.text-right {
+.tbl-ss-combined tfoot td.text-right,
+.tbl-ss-combined tfoot td {
     white-space: nowrap;
 }
 .tbl-section h3 {
