@@ -79,7 +79,8 @@ function serveFile(filePath, res) {
             res.end('Internal Server Error');
             return;
         }
-        res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': contentType });
+        const cacheHeader = ['.css', '.js'].includes(path.extname(filePath).toLowerCase()) ? { 'Cache-Control': 'no-cache' } : {};
+        res.writeHead(200, { ...SECURITY_HEADERS, ...cacheHeader, 'Content-Type': contentType });
         res.end(data);
     });
 }
