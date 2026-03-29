@@ -58,6 +58,41 @@ const SS_EMPLOYER = {
 };
 const SS_DESEMPLEO_EMPLOYER = { indefinido: 5.50, temporal: 6.70 };
 
+// =============================================================
+//  CUOTA DE SOLIDARIDAD — DA 50ª LGSS (añadida por Ley 21/2021)
+//  Tramos aplicados al exceso de salario anual sobre la BM anual
+//  Fuente: Seg-Social BNR 07-2024 (tabla oficial por año y tramo)
+//  Tramo 1: exceso de 0 % a 10 % de la BM anual
+//  Tramo 2: exceso del 10 % al 50 % de la BM anual
+//  Tramo 3: exceso a partir del 50 % de la BM anual
+// =============================================================
+const SOLIDARIDAD_BY_YEAR = {
+    2025: [0.92, 1.00, 1.17],
+    2026: [1.15, 1.25, 1.46],
+    2027: [1.38, 1.50, 1.75],
+    2028: [1.60, 1.75, 2.04],
+    2029: [1.83, 2.00, 2.33],
+    2030: [2.06, 2.25, 2.63],
+    2031: [2.29, 2.50, 2.92],
+    2032: [2.52, 2.75, 3.21],
+    2033: [2.75, 3.00, 3.50],
+    2034: [2.98, 3.25, 3.79],
+    2035: [3.21, 3.50, 4.08],
+    2036: [3.44, 3.75, 4.38],
+    2037: [3.67, 4.00, 4.67],
+    2038: [3.90, 4.25, 4.96],
+    2039: [4.13, 4.50, 5.25],
+    2040: [4.35, 4.75, 5.54],
+    2041: [4.58, 5.00, 5.83],
+    2042: [4.81, 5.25, 6.13],
+    2043: [5.04, 5.50, 6.42],
+    2044: [5.27, 5.75, 6.71],
+    2045: [5.50, 6.00, 7.00],
+};
+// Límites superiores de cada tramo (como fracción de la BM anual)
+const SOLIDARIDAD_TRAMO_LIMS = [0.10, 0.50, Infinity];
+const SOLIDARIDAD_WORKER_RATIO = 4.70 / 28.30;  // misma proporción que CC
+
 // Bases de cotización mensuales por año — Régimen General
 //  Fuente: seg-social.es/.../9932/4327 (últimos 5 años)
 const BASES_BY_YEAR = {
@@ -512,6 +547,45 @@ function getEspecieCustomItems() {
 }
 
 // =============================================================
+//  CUOTA DE SOLIDARIDAD — Cálculo
+// =============================================================
+
+function calcSolidaridad(brutoAnual, maxBaseAnual, anio) {
+    const exceso = Math.max(brutoAnual - maxBaseAnual, 0);
+    if (exceso <= 0) return { worker: 0, employer: 0, tramos: [] };
+
+    const tipos = SOLIDARIDAD_BY_YEAR[anio];
+    if (!tipos) return { worker: 0, employer: 0, tramos: [] };
+
+    let remaining = exceso;
+    let workerTotal = 0;
+    let employerTotal = 0;
+    const tramos = [];
+
+    SOLIDARIDAD_TRAMO_LIMS.forEach((limSup, i) => {
+        const prevLimAbs = i === 0 ? 0 : maxBaseAnual * SOLIDARIDAD_TRAMO_LIMS[i - 1];
+        const limSupAbs  = limSup === Infinity ? Infinity : maxBaseAnual * limSup;
+        const tramoWidth = limSupAbs === Infinity ? Infinity : limSupAbs - prevLimAbs;
+        const base = tramoWidth === Infinity ? remaining : Math.min(remaining, tramoWidth);
+        if (base <= 0) return;
+
+        const tipoTotal     = tipos[i];
+        const tipoW         = tipoTotal * SOLIDARIDAD_WORKER_RATIO;
+        const tipoE         = tipoTotal * (1 - SOLIDARIDAD_WORKER_RATIO);
+        const cuotaWorker   = base * tipoW / 100;
+        const cuotaEmployer = base * tipoE / 100;
+
+        workerTotal   += cuotaWorker;
+        employerTotal += cuotaEmployer;
+        remaining     -= base;
+
+        tramos.push({ label: `Cuota solidaridad T${i + 1}`, base, tipoTotal, tipoW, tipoE, cuotaWorker, cuotaEmployer });
+    });
+
+    return { worker: workerTotal, employer: employerTotal, tramos };
+}
+
+// =============================================================
 //  CÁLCULO PRINCIPAL
 // =============================================================
 
@@ -663,6 +737,11 @@ function calcular(scroll = false) {
         return { ...c, base: baseSSmensual, anual };
     });
 
+    // Cuota de solidaridad (DA 50ª LGSS) — exceso de salario anual sobre BM anual
+    const maxBaseAnual = baseMax * 12;
+    const solidaridad = calcSolidaridad(bruto, maxBaseAnual, anio);
+    totalSSanual += solidaridad.worker;
+
     // ───────────────────────────────────────────
     //  2. IRPF — Determinación de base liquidable
     // ───────────────────────────────────────────
@@ -744,6 +823,7 @@ function calcular(scroll = false) {
         totalEmpAnual += anual;
         return { ...c, anual };
     });
+    totalEmpAnual += solidaridad.employer;
     // Only adicional adds cost; flexible is already inside bruto
     const costeTotal = bruto + totalEmpAnual + totalAdicional;
 
@@ -783,11 +863,41 @@ function calcular(scroll = false) {
             `<td class="text-right">${fmt(anualComb)} €</td>` +
             `</tr>`;
     }).join('');
+    if (solidaridad.tramos.length > 0) {
+        tbSS.innerHTML += solidaridad.tramos.map(t =>
+            `<tr class="ss-solidarity">` +
+            `<td>${t.label} <small class="solidarity-note">(base anual: ${fmt(t.base)} €)</small></td>` +
+            `<td>—</td>` +
+            `<td>${fmtPct(t.tipoW)}</td>` +
+            `<td class="text-right">${fmt(t.cuotaWorker)} €</td>` +
+            `<td>${fmtPct(t.tipoE)}</td>` +
+            `<td class="text-right">${fmt(t.cuotaEmployer)} €</td>` +
+            `<td>${fmtPct(t.tipoTotal)}</td>` +
+            `<td class="text-right">${fmt(t.cuotaWorker + t.cuotaEmployer)} €</td>` +
+            `</tr>`
+        ).join('');
+        // Subtotal row for Cuota de Solidaridad
+        const solSubW = solidaridad.worker;
+        const solSubE = solidaridad.employer;
+        tbSS.innerHTML +=
+            `<tr class="ss-solidarity ss-solidarity-subtotal">` +
+            `<td><strong>Subtotal C. Solidaridad</strong></td>` +
+            `<td>—</td>` +
+            `<td>—</td>` +
+            `<td class="text-right"><strong>${fmt(solSubW)} €</strong></td>` +
+            `<td>—</td>` +
+            `<td class="text-right"><strong>${fmt(solSubE)} €</strong></td>` +
+            `<td>—</td>` +
+            `<td class="text-right"><strong>${fmt(solSubW + solSubE)} €</strong></td>` +
+            `</tr>`;
+    }
     const totalCombAnual = totalSSanual + totalEmpAnual;
     const totalWorkerTipo = ssConceptos.reduce((s, c) => s + c.tipoW, 0);
     const totalEmpTipo = ssConceptos.reduce((s, c) => s + c.tipoE, 0);
     const totalCombTipo = totalWorkerTipo + totalEmpTipo;
-    tfSS.innerHTML = `<tr><td colspan="2">Total</td>` +
+    const hasSolidaridad = solidaridad.tramos.length > 0;
+    document.getElementById('legSolidaridad').style.display = hasSolidaridad ? '' : 'none';
+    tfSS.innerHTML = `<tr><td colspan="2">Total${hasSolidaridad ? ' <small class="solidarity-note">(incl. C. Solidaridad)</small>' : ''}</td>` +
         `<td>${fmtPct(totalWorkerTipo)}</td><td class="text-right">${fmt(totalSSanual)} €</td>` +
         `<td>${fmtPct(totalEmpTipo)}</td><td class="text-right">${fmt(totalEmpAnual)} €</td>` +
         `<td>${fmtPct(totalCombTipo)}</td><td class="text-right">${fmt(totalCombAnual)} €</td></tr>`;

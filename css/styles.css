@@ -360,6 +360,10 @@ tr.ss-employer-only td:first-child { border-left: 4px solid #6a1b9a; }
 tr.ss-shared td        { background: #e8f5e9; }
 tr.ss-worker-only td   { background: #e3f2fd; }
 tr.ss-employer-only td { background: #f3e5f5; }
+tr.ss-solidarity td:first-child  { border-left: 4px solid #00897b; }
+tr.ss-solidarity td              { background: #e0f2f1; font-style: italic; }
+tr.ss-solidarity-subtotal td     { background: #b2dfdb; font-style: normal; border-top: 2px solid #00897b; }
+.solidarity-note                 { font-style: normal; color: var(--gray-600); font-size: .85em; }
 
 .ss-legend {
     display: flex;
