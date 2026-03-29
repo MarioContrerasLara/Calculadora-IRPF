@@ -939,3 +939,35 @@ document.getElementById('bruto').addEventListener('keydown', function(e) {
 document.getElementById('cnae').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') calcular();
 });
+
+// Auto-recalculate on any input change (debounced for text fields)
+(function () {
+    let _timer = null;
+    function scheduleCalc() {
+        const bruto = document.getElementById('bruto').value.replace(/[^\d,.]/g, '');
+        if (!bruto) return;  // don't recalc on empty salary
+        clearTimeout(_timer);
+        _timer = setTimeout(calcular, 400);
+    }
+
+    // Text / number inputs — debounced
+    ['bruto', 'anio', 'cnae'].forEach(id => {
+        document.getElementById(id).addEventListener('input', scheduleCalc);
+    });
+
+    // Select inputs — immediate
+    ['pagas', 'contrato', 'edad', 'discapacidad', 'hijos', 'ascendientes', 'grupo'].forEach(id => {
+        document.getElementById(id).addEventListener('change', scheduleCalc);
+    });
+
+    // Especie inputs — debounced (delegated on their containers)
+    ['espSeguroMedicoAd','espSeguroMedicoFl','espTicketRestAd','espTicketRestFl',
+     'espTransporteAd','espTransporteFl','espSeguroMedicoBenef'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', scheduleCalc);
+    });
+
+    // Custom especie rows — delegate on list container
+    document.getElementById('espCustomList').addEventListener('input', scheduleCalc);
+    document.getElementById('espCustomList').addEventListener('change', scheduleCalc);
+})();
