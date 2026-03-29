@@ -377,27 +377,31 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const netEl  = document.getElementById('iceZoneNet');
     const wrkEl  = document.getElementById('iceZoneEmployee');
     const empEl  = document.getElementById('iceZoneEmployer');
-    netEl.style.top = (scenePx(netMidSvgY) / sceneH * 100) + '%';
-    wrkEl.style.top = (scenePx(workerMidSvgY) / sceneH * 100) + '%';
-    empEl.style.top = (scenePx(empMidSvgY) / sceneH * 100) + '%';
 
-    // Label — Net pay (sky, top-left)
-    document.getElementById('iceZoneNet').innerHTML =
+    // Set innerHTML FIRST so we can measure label heights
+    netEl.innerHTML =
         `<div class="ice-val">€ ${fmt(netoClean)}</div>` +
         `<div class="ice-lbl-text">Pago neto</div>` +
         `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
 
-    // Label — Employee taxes (water, left)
-    document.getElementById('iceZoneEmployee').innerHTML =
+    wrkEl.innerHTML =
         `<div class="ice-val">€ ${fmt(workerTax)}</div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por ti</div>` +
         `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
 
-    // Label — Employer taxes (water, right)
-    document.getElementById('iceZoneEmployer').innerHTML =
+    empEl.innerHTML =
         `<div class="ice-val">€ ${fmt(employerTax)}</div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por tu empleador</div>` +
         `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
+
+    // Position labels so the connector line (at the bottom) aligns with zone midpoint
+    const netTargetPx = scenePx(netMidSvgY);
+    const wrkTargetPx = scenePx(workerMidSvgY);
+    const empTargetPx = scenePx(empMidSvgY);
+
+    netEl.style.top = (netTargetPx - netEl.offsetHeight) + 'px';
+    wrkEl.style.top = (wrkTargetPx - wrkEl.offsetHeight) + 'px';
+    empEl.style.top = (empTargetPx - empEl.offsetHeight) + 'px';
 
     // Set connector widths so dots touch the iceberg edge
     const [netLx]    = iceEdge(netMidSvgY);
