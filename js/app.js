@@ -378,30 +378,30 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const wrkEl  = document.getElementById('iceZoneEmployee');
     const empEl  = document.getElementById('iceZoneEmployer');
 
-    // Connector on top, text below
+    // Amount + text above, connector line at bottom aligned with zone
     netEl.innerHTML =
-        `<div class="ice-connector"><span class="ice-connector-dot"></span></div>` +
         `<div class="ice-val">€ ${fmt(netoClean)}</div>` +
-        `<div class="ice-lbl-text">Pago neto</div>`;
+        `<div class="ice-lbl-text">Pago neto</div>` +
+        `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
 
     wrkEl.innerHTML =
-        `<div class="ice-connector"><span class="ice-connector-dot"></span></div>` +
         `<div class="ice-val">€ ${fmt(workerTax)}</div>` +
-        `<div class="ice-lbl-text">Impuestos pagados<br>por ti</div>`;
+        `<div class="ice-lbl-text">Impuestos pagados<br>por ti</div>` +
+        `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
 
     empEl.innerHTML =
-        `<div class="ice-connector"><span class="ice-connector-dot"></span></div>` +
         `<div class="ice-val">€ ${fmt(employerTax)}</div>` +
-        `<div class="ice-lbl-text">Impuestos pagados<br>por tu empleador</div>`;
+        `<div class="ice-lbl-text">Impuestos pagados<br>por tu empleador</div>` +
+        `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
 
-    // Position labels so the connector (at the top) aligns with zone midpoint
+    // Position so the connector (at the bottom) aligns with zone midpoint
     const netTargetPx = scenePx(netMidSvgY);
     const wrkTargetPx = scenePx(workerMidSvgY);
     const empTargetPx = scenePx(empMidSvgY);
 
-    netEl.style.top = netTargetPx + 'px';
-    wrkEl.style.top = wrkTargetPx + 'px';
-    empEl.style.top = empTargetPx + 'px';
+    netEl.style.top = (netTargetPx - netEl.offsetHeight) + 'px';
+    wrkEl.style.top = (wrkTargetPx - wrkEl.offsetHeight) + 'px';
+    empEl.style.top = (empTargetPx - empEl.offsetHeight) + 'px';
 
     // Set connector widths so dots touch the iceberg edge
     const [netLx]    = iceEdge(netMidSvgY);

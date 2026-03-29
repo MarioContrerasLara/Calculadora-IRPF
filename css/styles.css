@@ -528,7 +528,7 @@ footer a { color: var(--brand); }
 }
 .ice-connector {
     display: block;
-    margin-bottom: 6px;
+    margin-top: 6px;
     border-top: 2px dotted rgba(210,185,70,.7);
     position: relative;
 }
