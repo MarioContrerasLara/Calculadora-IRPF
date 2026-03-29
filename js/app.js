@@ -29,11 +29,22 @@ const ESCALA_ANDALUCIA = [
 //          CotizacionRecaudacionTrabajadores/10721/10957/9932/4315
 // =============================================================
 
+// MEI (Mecanismo de Equidad Intergeneracional) by year — DT 43ª RDL 2/2023
+const MEI_BY_YEAR = {
+    2023: { worker: 0.10, employer: 0.50 },
+    2024: { worker: 0.12, employer: 0.58 },
+    2025: { worker: 0.13, employer: 0.67 },
+    2026: { worker: 0.15, employer: 0.75 },
+    2027: { worker: 0.17, employer: 0.83 },
+    2028: { worker: 0.18, employer: 0.92 },
+    2029: { worker: 0.20, employer: 1.00 },
+};
+
 // Tipos del TRABAJADOR
 const SS_WORKER = {
     contingenciasComunes: 4.70,
     formacionProfesional: 0.10,
-    mei: 0.13,  // Mecanismo de Equidad Intergeneracional 2025 (DT 43ª RDL 2/2023)
+    mei: 0.13,  // default 2025; overridden at runtime by selected year
 };
 const SS_DESEMPLEO_WORKER = { indefinido: 1.55, temporal: 1.60 };
 
@@ -43,7 +54,7 @@ const SS_EMPLOYER = {
     accidentesTrabajo: 2.00,  // AT y EP (Disp. Adic. 4ª Ley 42/2006)
     fogasa: 0.20,
     formacionProfesional: 0.60,
-    mei: 0.67,  // MEI 2025 (DT 43ª RDL 2/2023)
+    mei: 0.67,  // default 2025; overridden at runtime by selected year
 };
 const SS_DESEMPLEO_EMPLOYER = { indefinido: 5.50, temporal: 6.70 };
 
@@ -505,6 +516,11 @@ function calcular() {
         alert('Introduce un salario bruto anual válido.');
         return;
     }
+
+    const anio = parseInt(document.getElementById('anio').value, 10);
+    const meiRates = MEI_BY_YEAR[anio] || MEI_BY_YEAR[2026];
+    SS_WORKER.mei   = meiRates.worker;
+    SS_EMPLOYER.mei = meiRates.employer;
 
     const numPagas = parseInt(document.getElementById('pagas').value, 10);
     const contrato = document.getElementById('contrato').value;
