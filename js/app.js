@@ -332,16 +332,54 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     eRect.setAttribute('y', splitY);
     eRect.setAttribute('height', bodyBot - splitY);
 
-    // Position labels at the midpoint of each zone
-    // SVG is 440 units tall, placed at top:15px inside a 560px scene
-    const svgTop = 15, sceneH = 560;
-    const netMidY   = svgTop + (0 + bodyTop) / 2;          // tip midpoint
-    const workerMidY = svgTop + (bodyTop + splitY) / 2;     // teal zone midpoint
-    const empMidY    = svgTop + (splitY + bodyBot) / 2;     // gold zone midpoint
+    // ── Position labels dynamically at zone midpoints ──
+    // Compute iceberg edge at a given SVG Y
+    const L = [[20,195],[10,220],[6,260],[10,300],[22,340],[44,375],[75,405],[110,425],[150,440]];
+    const R = [[280,195],[290,220],[294,260],[290,300],[278,340],[256,375],[225,405],[190,425],[150,440]];
+    function iceEdge(svgY) {
+        if (svgY <= 195) {
+            const t = svgY / 195;
+            return [150 - 130 * t, 150 + 130 * t];
+        }
+        function interp(pts, y) {
+            for (let i = 0; i < pts.length - 1; i++) {
+                if (y >= pts[i][1] && y <= pts[i+1][1]) {
+                    const f = (y - pts[i][1]) / (pts[i+1][1] - pts[i][1]);
+                    return pts[i][0] + f * (pts[i+1][0] - pts[i][0]);
+                }
+            }
+            return pts[pts.length - 1][0];
+        }
+        return [interp(L, svgY), interp(R, svgY)];
+    }
 
-    document.getElementById('iceZoneNet').style.top      = (netMidY / sceneH * 100) + '%';
-    document.getElementById('iceZoneEmployee').style.top  = (workerMidY / sceneH * 100) + '%';
-    document.getElementById('iceZoneEmployer').style.top  = (empMidY / sceneH * 100) + '%';
+    // Zone midpoints in SVG Y coords
+    const netMidSvgY    = (0 + bodyTop) / 2;
+    const workerMidSvgY = (bodyTop + splitY) / 2;
+    const empMidSvgY    = (splitY + bodyBot) / 2;
+
+    // Get actual rendered positions using getBoundingClientRect
+    const svgEl    = document.querySelector('.ice-svg');
+    const sceneEl  = document.querySelector('.ice-scene');
+    const svgRect  = svgEl.getBoundingClientRect();
+    const sceneRect = sceneEl.getBoundingClientRect();
+    const svgRelL  = svgRect.left - sceneRect.left;
+    const sx       = svgRect.width / 300;
+    const sy       = svgRect.height / 440;
+    const svgRelT  = svgRect.top - sceneRect.top;
+    const sceneW   = sceneRect.width;
+    const sceneH   = sceneRect.height;
+
+    // Convert SVG Y to scene-relative px
+    function scenePx(svgY) { return svgRelT + svgY * sy; }
+
+    // Set vertical positions (as %)
+    const netEl  = document.getElementById('iceZoneNet');
+    const wrkEl  = document.getElementById('iceZoneEmployee');
+    const empEl  = document.getElementById('iceZoneEmployer');
+    netEl.style.top = (scenePx(netMidSvgY) / sceneH * 100) + '%';
+    wrkEl.style.top = (scenePx(workerMidSvgY) / sceneH * 100) + '%';
+    empEl.style.top = (scenePx(empMidSvgY) / sceneH * 100) + '%';
 
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
@@ -360,6 +398,25 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
         `<div class="ice-val">€ ${fmt(employerTax)}</div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por tu empleador</div>` +
         `<div class="ice-connector"><span class="ice-connector-dot"></span></div>`;
+
+    // Set connector widths so dots touch the iceberg edge
+    const [netLx]    = iceEdge(netMidSvgY);
+    const [wrkLx]    = iceEdge(workerMidSvgY);
+    const [, empRx]  = iceEdge(empMidSvgY);
+
+    const netIcePx = svgRelL + netLx * sx;
+    const wrkIcePx = svgRelL + wrkLx * sx;
+    const empIcePx = svgRelL + empRx * sx;
+
+    // Left labels: connector stretches from label left edge to iceberg left edge
+    const netLabelLeft = sceneW * 0.05;
+    const wrkLabelLeft = sceneW * 0.04;
+    netEl.querySelector('.ice-connector').style.width = Math.max(20, netIcePx - netLabelLeft) + 'px';
+    wrkEl.querySelector('.ice-connector').style.width = Math.max(20, wrkIcePx - wrkLabelLeft) + 'px';
+
+    // Right label: connector stretches from iceberg right edge to label right edge
+    const empLabelRight = sceneW * 0.95;
+    empEl.querySelector('.ice-connector').style.width = Math.max(20, empLabelRight - empIcePx) + 'px';
 
     // Summary cards
     const perEuro = costeTotal > 0 ? (totalTax / costeTotal * 10).toFixed(2).replace('.', ',') : '0';

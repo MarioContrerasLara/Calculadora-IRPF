@@ -547,7 +547,6 @@ footer a { color: var(--brand); }
 }
 .ice-label-net .ice-val { color: #0c3a50; }
 .ice-label-net .ice-lbl-text { color: rgba(12,58,80,.7); }
-.ice-label-net .ice-connector { width: 100px; }
 .ice-label-net .ice-connector-dot { right: -4px; }
 
 /* ─ Label: Employee taxes (water, left) ─ */
@@ -556,7 +555,6 @@ footer a { color: var(--brand); }
 }
 .ice-label-employee .ice-val { color: #7ec8e3; }
 .ice-label-employee .ice-lbl-text { color: rgba(255,255,255,.65); }
-.ice-label-employee .ice-connector { width: 90px; }
 .ice-label-employee .ice-connector-dot { right: -4px; }
 
 /* ─ Label: Employer taxes (water, right) ─ */
@@ -566,7 +564,7 @@ footer a { color: var(--brand); }
 }
 .ice-label-employer .ice-val { color: #fff; }
 .ice-label-employer .ice-lbl-text { color: rgba(255,255,255,.65); }
-.ice-label-employer .ice-connector { width: 90px; margin-left: auto; }
+.ice-label-employer .ice-connector { margin-left: auto; }
 .ice-label-employer .ice-connector-dot { left: -4px; }
 
 /* ─ Whale ─ */
