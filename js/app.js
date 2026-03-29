@@ -320,44 +320,40 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const apparentRate = brutoVisible > 0 ? (workerTax / brutoVisible * 100) : 0;
 
     // ── Iceberg SVG: compute underwater body paths ──
-    // The underwater body outline (left side, from top-center to bottom-center)
-    // We trace the left side then mirror for right.
-    // Body spans from y=195 (waterline) to y=420 (bottom point)
-    const bodyLeft  = [[20,195],[10,220],[6,260],[10,300],[22,340],[44,375],[75,405],[110,425],[150,440]];
-    const bodyRight = [[280,195],[290,220],[294,260],[290,300],[278,340],[256,375],[225,405],[190,425],[150,440]];
+    // Body outline from waterline (y=195) to bottom (y=440)
+    // Left side points (going down)
+    const L = [[20,195],[10,220],[6,260],[10,300],[22,340],[44,375],[75,405],[110,425],[150,440]];
+    // Right side points (going down)
+    const R = [[280,195],[290,220],[294,260],[290,300],[278,340],[256,375],[225,405],[190,425],[150,440]];
 
-    // Split at a y-value determined by worker/employer ratio
-    const BODY_Y_TOP = 195, BODY_Y_BOT = 440;
     const workerPct = totalTax > 0 ? (workerTax / totalTax) : 0.5;
-    const splitY = BODY_Y_TOP + Math.round(workerPct * (BODY_Y_BOT - BODY_Y_TOP));
+    const splitY = Math.round(195 + workerPct * (440 - 195));
 
-    function interp(pts, y) {
+    // Interpolate x at a given y along a set of points
+    function xAt(pts, y) {
         for (let i = 0; i < pts.length - 1; i++) {
             if (y >= pts[i][1] && y <= pts[i+1][1]) {
                 const t = (y - pts[i][1]) / (pts[i+1][1] - pts[i][1]);
-                return pts[i][0] + t * (pts[i+1][0] - pts[i][0]);
+                return Math.round(pts[i][0] + t * (pts[i+1][0] - pts[i][0]));
             }
         }
         return pts[pts.length-1][0];
     }
 
-    const splitXL = Math.round(interp(bodyLeft, splitY));
-    const splitXR = Math.round(interp(bodyRight, splitY));
+    const sxL = xAt(L, splitY);
+    const sxR = xAt(R, splitY);
 
-    function ptsAbove(side, sy) {
-        return side.filter(p => p[1] <= sy).map(p => p.join(',')).join(' ');
-    }
-    function ptsBelow(side, sy) {
-        return side.filter(p => p[1] >= sy).map(p => p.join(',')).join(' ');
-    }
+    // Worker zone: top of body → splitY
+    let wPts = L.filter(p => p[1] < splitY).concat([[sxL, splitY]]);
+    let wPtsR = R.filter(p => p[1] < splitY).concat([[sxR, splitY]]).reverse();
+    const wD = 'M' + wPts.concat(wPtsR).map(p => p[0]+','+p[1]).join(' L') + ' Z';
+    document.getElementById('iceWorkerPath').setAttribute('d', wD);
 
-    // Worker path: waterline down to splitY
-    const wPath = `M${ptsAbove(bodyLeft,splitY).replaceAll(' ','L')} L${splitXL},${splitY} L${splitXR},${splitY} L${ptsAbove(bodyRight,splitY).split(' ').reverse().join('L')} Z`;
-    document.getElementById('iceWorkerPath').setAttribute('d', wPath);
-
-    // Employer path: splitY down to bottom
-    const ePath = `M${splitXL},${splitY} L${ptsBelow(bodyLeft,splitY).replaceAll(' ','L')} L${ptsBelow(bodyRight,splitY).split(' ').reverse().join('L')} L${splitXR},${splitY} Z`;
-    document.getElementById('iceEmployerPath').setAttribute('d', ePath);
+    // Employer zone: splitY → bottom
+    let ePts = [[sxL, splitY]].concat(L.filter(p => p[1] > splitY));
+    let ePtsR = [[sxR, splitY]].concat(R.filter(p => p[1] > splitY)).reverse();
+    const eD = 'M' + ePts.concat(ePtsR).map(p => p[0]+','+p[1]).join(' L') + ' Z';
+    document.getElementById('iceEmployerPath').setAttribute('d', eD);
 
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
