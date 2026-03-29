@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora IRPF + Seguridad Social 2025 — Andalucía</title>
-    <link rel="stylesheet" href="css/styles.css?v=2">
+    <link rel="stylesheet" href="css/styles.css?v=3">
 </head>
 <body>
 
@@ -281,19 +281,23 @@
                 <!-- Waterline shimmer -->
                 <div class="ice-waterline"></div>
                 <!-- Iceberg SVG: 3 zones in one shape -->
-                <svg class="ice-svg" viewBox="0 0 300 500" preserveAspectRatio="xMidYMid meet">
+                <svg class="ice-svg" viewBox="0 0 300 440" preserveAspectRatio="xMidYMid meet">
                     <defs>
                         <linearGradient id="tipGrad" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#ffffff"/>
                             <stop offset="100%" stop-color="#cddde9"/>
                         </linearGradient>
+                        <clipPath id="bodyClip">
+                            <polygon points="20,195 10,220 6,260 10,300 22,340 44,375 75,405 110,425 150,440 190,425 225,405 256,375 278,340 290,300 294,260 290,220 280,195"/>
+                        </clipPath>
                     </defs>
                     <!-- Above-water triangle (tip) -->
-                    <path d="M150 0 L280 195 L20 195 Z" fill="url(#tipGrad)"/>
-                    <!-- Below-water worker zone -->
-                    <path id="iceWorkerPath" d="" fill="rgba(90,185,215,0.9)"/>
-                    <!-- Below-water employer zone -->
-                    <path id="iceEmployerPath" d="" fill="rgba(175,145,30,0.85)"/>
+                    <polygon points="150,0 280,195 20,195" fill="url(#tipGrad)"/>
+                    <!-- Below-water body (clipped to iceberg shape) -->
+                    <g clip-path="url(#bodyClip)">
+                        <rect id="iceWorkerRect" x="0" y="195" width="300" height="122" fill="rgba(90,185,215,0.9)"/>
+                        <rect id="iceEmployerRect" x="0" y="317" width="300" height="123" fill="rgba(175,145,30,0.85)"/>
+                    </g>
                 </svg>
                 <!-- Flag -->
                 <div class="ice-flag">🇪🇸</div>

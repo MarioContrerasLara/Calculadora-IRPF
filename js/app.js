@@ -319,41 +319,18 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const brutoVisible = netoClean + workerTax;
     const apparentRate = brutoVisible > 0 ? (workerTax / brutoVisible * 100) : 0;
 
-    // ── Iceberg SVG: compute underwater body paths ──
-    // Body outline from waterline (y=195) to bottom (y=440)
-    // Left side points (going down)
-    const L = [[20,195],[10,220],[6,260],[10,300],[22,340],[44,375],[75,405],[110,425],[150,440]];
-    // Right side points (going down)
-    const R = [[280,195],[290,220],[294,260],[290,300],[278,340],[256,375],[225,405],[190,425],[150,440]];
-
+    // ── Iceberg SVG: set underwater body rects ──
     const workerPct = totalTax > 0 ? (workerTax / totalTax) : 0.5;
-    const splitY = Math.round(195 + workerPct * (440 - 195));
+    const bodyTop = 195, bodyBot = 440;
+    const splitY = Math.round(bodyTop + workerPct * (bodyBot - bodyTop));
 
-    // Interpolate x at a given y along a set of points
-    function xAt(pts, y) {
-        for (let i = 0; i < pts.length - 1; i++) {
-            if (y >= pts[i][1] && y <= pts[i+1][1]) {
-                const t = (y - pts[i][1]) / (pts[i+1][1] - pts[i][1]);
-                return Math.round(pts[i][0] + t * (pts[i+1][0] - pts[i][0]));
-            }
-        }
-        return pts[pts.length-1][0];
-    }
+    const wRect = document.getElementById('iceWorkerRect');
+    wRect.setAttribute('y', bodyTop);
+    wRect.setAttribute('height', splitY - bodyTop);
 
-    const sxL = xAt(L, splitY);
-    const sxR = xAt(R, splitY);
-
-    // Worker zone: top of body → splitY
-    let wPts = L.filter(p => p[1] < splitY).concat([[sxL, splitY]]);
-    let wPtsR = R.filter(p => p[1] < splitY).concat([[sxR, splitY]]).reverse();
-    const wD = 'M' + wPts.concat(wPtsR).map(p => p[0]+','+p[1]).join(' L') + ' Z';
-    document.getElementById('iceWorkerPath').setAttribute('d', wD);
-
-    // Employer zone: splitY → bottom
-    let ePts = [[sxL, splitY]].concat(L.filter(p => p[1] > splitY));
-    let ePtsR = [[sxR, splitY]].concat(R.filter(p => p[1] > splitY)).reverse();
-    const eD = 'M' + ePts.concat(ePtsR).map(p => p[0]+','+p[1]).join(' L') + ' Z';
-    document.getElementById('iceEmployerPath').setAttribute('d', eD);
+    const eRect = document.getElementById('iceEmployerRect');
+    eRect.setAttribute('y', splitY);
+    eRect.setAttribute('height', bodyBot - splitY);
 
     // Label — Net pay (sky, top-left)
     document.getElementById('iceZoneNet').innerHTML =
