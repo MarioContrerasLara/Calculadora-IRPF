@@ -58,7 +58,17 @@ const SS_EMPLOYER = {
 };
 const SS_DESEMPLEO_EMPLOYER = { indefinido: 5.50, temporal: 6.70 };
 
-// Bases de cotización mensuales 2025
+// Bases de cotización mensuales por año — Régimen General
+//  Fuente: seg-social.es/.../9932/4327 (últimos 5 años)
+const BASES_BY_YEAR = {
+    2021: { max: 4070.10, minByGroup: { 1: 1572.30, 2: 1303.80, 3: 1134.30, 4: 1125.90 } },
+    2022: { max: 4139.40, minByGroup: { 1: 1629.30, 2: 1351.20, 3: 1175.40, 4: 1166.70 } },
+    2023: { max: 4495.50, minByGroup: { 1: 1759.50, 2: 1459.20, 3: 1269.30, 4: 1260.00 } },
+    2024: { max: 4720.50, minByGroup: { 1: 1847.40, 2: 1532.10, 3: 1332.90, 4: 1323.00 } },
+    2025: { max: 4909.50, minByGroup: { 1: 1929.00, 2: 1599.60, 3: 1391.70, 4: 1381.20 } },
+};
+
+// Bases de cotización mensuales (default: 2025 — overridden at runtime by selected year)
 const BASES = {
     max: 4909.50,
     minByGroup: { 1: 1929.00, 2: 1599.60, 3: 1391.70, 4: 1381.20 },
@@ -527,6 +537,9 @@ function calcular(scroll = false) {
     const meiRates = MEI_BY_YEAR[anio] || MEI_BY_YEAR[2026];
     SS_WORKER.mei   = meiRates.worker;
     SS_EMPLOYER.mei = meiRates.employer;
+    const basesAnio = BASES_BY_YEAR[anio] || BASES_BY_YEAR[2025];
+    BASES.max = basesAnio.max;
+    BASES.minByGroup = basesAnio.minByGroup;
 
     const numPagas = parseInt(document.getElementById('pagas').value, 10);
     const contrato = document.getElementById('contrato').value;
