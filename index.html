@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora IRPF + Seguridad Social 2026 — Andalucía</title>
-    <link rel="stylesheet" href="css/styles.css?v=19">
+    <link rel="stylesheet" href="css/styles.css?v=20">
 </head>
 <body>
 
@@ -222,50 +222,50 @@
         <!-- 2. Determinación de la base liquidable -->
         <div class="tbl-section">
             <h3>Determinación de la base liquidable <span class="badge badge-green">IRPF</span></h3>
-            <table>
+            <div class="tbl-scroll"><table>
                 <thead><tr><th>Concepto</th><th class="text-right">Importe (€)</th></tr></thead>
                 <tbody id="tbFlow"></tbody>
-            </table>
+            </table></div>
         </div>
 
         <!-- 3. Mínimo personal y familiar -->
         <div class="tbl-section">
             <h3>Mínimo personal y familiar <span class="badge badge-state">Estatal</span> <span class="badge badge-auto">Autonómico</span></h3>
-            <table>
+            <div class="tbl-scroll"><table>
                 <thead><tr><th>Concepto</th><th class="text-right">Estatal (€)</th><th class="text-right">Autonómico (€)</th></tr></thead>
                 <tbody id="tbMin"></tbody>
                 <tfoot><tr><td>Total mínimo</td><td class="text-right" id="tfMinEst">—</td><td class="text-right" id="tfMinAut">—</td></tr></tfoot>
-            </table>
+            </table></div>
         </div>
 
         <!-- 4. IRPF estatal -->
         <div class="tbl-section">
             <h3>Desglose IRPF estatal <span class="badge badge-state">Art. 63 Ley IRPF</span></h3>
-            <table>
+            <div class="tbl-scroll"><table>
                 <thead><tr><th>Tramo</th><th>Base tramo</th><th>Tipo</th><th class="text-right">Cuota</th></tr></thead>
                 <tbody id="tbEst"></tbody>
                 <tfoot id="tfEst"></tfoot>
-            </table>
+            </table></div>
         </div>
 
         <!-- 5. IRPF autonómico -->
         <div class="tbl-section">
             <h3>Desglose IRPF autonómico — Andalucía <span class="badge badge-auto">Ley 5/2021</span></h3>
-            <table>
+            <div class="tbl-scroll"><table>
                 <thead><tr><th>Tramo</th><th>Base tramo</th><th>Tipo</th><th class="text-right">Cuota</th></tr></thead>
                 <tbody id="tbAut"></tbody>
                 <tfoot id="tfAut"></tfoot>
-            </table>
+            </table></div>
         </div>
 
         <!-- 6. IRPF resumen combinado -->
         <div class="tbl-section">
             <h3>Resumen IRPF <span class="badge badge-state">Estatal</span> + <span class="badge badge-auto">Autonómico</span></h3>
-            <table>
+            <div class="tbl-scroll"><table>
                 <thead><tr><th>Componente</th><th class="text-right">Cuota (€)</th><th class="text-right">Tipo efectivo</th></tr></thead>
                 <tbody id="tbIrpfResumen"></tbody>
                 <tfoot id="tfIrpfResumen"></tfoot>
-            </table>
+            </table></div>
         </div>
 
         <!-- 7. Resumen anual + mensual -->
@@ -340,7 +340,7 @@
     Herramienta orientativa — no sustituye al asesoramiento profesional.
 </footer>
 
-<script src="js/tarifa-at.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
+<script src="js/tarifa-at.js?v=20"></script>
+<script src="js/app.js?v=20"></script>
 </body>
 </html>

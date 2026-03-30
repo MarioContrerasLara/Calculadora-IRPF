@@ -847,23 +847,92 @@ footer a:hover { text-decoration: underline; }
    RESPONSIVE
 ══════════════════════════════════════════════ */
 
+/* Tables always scrollable on small screens */
+.tbl-section .tbl-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 900px) {
+    .form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+}
+
 @media (max-width: 640px) {
-    header { padding: 2.5rem 1rem 2rem; }
-    .card { padding: 1.25rem 1.25rem; }
-    .hero-card .val { font-size: 1.1rem; }
+    /* Layout */
+    .container { padding: 1rem .75rem 3rem; }
+    header { padding: 2rem 1rem 1.75rem; }
+
+    /* Cards */
+    .card { padding: 1.1rem 1rem; border-radius: var(--radius-sm); }
+    .card h2 { font-size: 1.1rem; }
+
+    /* Form — single column */
+    .form-grid { grid-template-columns: 1fr; gap: .85rem; }
+    .form-group input,
+    .form-group select { font-size: 1rem; padding: .7rem .9rem; }
+
+    /* Hero grid — 2 columns */
+    .hero-grid { grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .hero-card { padding: 1rem .85rem; border-radius: var(--radius-sm); }
+    .hero-card .val { font-size: 1.1rem; letter-spacing: -.02em; }
+    .hero-card .lbl { font-size: .62rem; }
+
+    /* Monthly grid */
+    .monthly-grid { grid-template-columns: 1fr 1fr; gap: .6rem; }
+
+    /* Tables */
     table { font-size: .78rem; }
     th, td { padding: .45rem .65rem; }
+
+    /* Pie */
     .pie-container { flex-direction: column; }
-    .pie-svg { max-width: 200px; }
-    .ice-scene { height: 480px; }
-    .ice-label .ice-val { font-size: 1.1rem; }
-    .ice-label-net { left: 3%; }
+    .pie-svg { max-width: 180px; }
+    .chart-wrap { padding: 1.1rem 1rem; }
+
+    /* Collapsibles */
+    .especie-toggle { font-size: .88rem; padding: .8rem 1rem; }
+    .especie-body { padding: .85rem .9rem 1rem; }
+
+    /* Dual inputs stack */
+    .especie-dual-inputs { flex-direction: column; }
+    .especie-dual-field input { font-size: .9rem; }
+
+    /* Custom especie rows — wrap to 2 lines */
+    .especie-custom-row { flex-wrap: wrap; gap: .45rem; }
+    .especie-custom-name { flex: 1 1 100%; min-width: 0; }
+    .especie-custom-ad,
+    .especie-custom-fl { flex: 1 1 calc(50% - 1.5rem); min-width: 0; max-width: none; }
+    .especie-custom-din { flex: 1 1 calc(50% - 1.5rem); min-width: 0; max-width: none; }
+    .especie-din-label { flex-shrink: 0; }
+
+    /* Bonus rows stack */
+    .bonus-importe { flex: 1 1 100%; max-width: none; min-width: 0; }
+    .bonus-mes { flex: 1 1 auto; min-width: 0; }
+
+    /* Buttons */
+    .btn-calc { font-size: .95rem; }
+    .btn-add-especie { font-size: .8rem; }
+
+    /* Iceberg */
+    .ice-scene { height: 420px; }
+    .ice-label .ice-val { font-size: 1rem; }
+    .ice-label-net { left: 2%; }
     .ice-label-employee { left: 2%; }
     .ice-label-employer { right: 2%; }
-    .ice-connector { width: 50px !important; }
-    .ice-svg { width: 220px; height: auto; }
+    .ice-connector { width: 40px !important; }
+    .ice-svg { width: 200px; height: auto; }
     .ice-summary { grid-template-columns: 1fr; }
-    .ice-card .ice-card-value { font-size: 1.5rem; }
-    .ice-card { padding: 1.2rem 1.25rem; }
-    .especie-dual-inputs { flex-direction: column; }
+    .ice-card .ice-card-value { font-size: 1.4rem; }
+    .ice-card { padding: 1.1rem 1rem; }
+
+    /* SS legend wrap */
+    .ss-legend { gap: .75rem; padding: .6rem 1rem .4rem; }
+
+    /* tbl-section header padding */
+    .tbl-section h3 { padding: .8rem 1rem; font-size: .88rem; }
+    th { padding: .55rem .75rem; }
+    td { padding: .5rem .75rem; }
+    tfoot td { padding: .6rem .75rem; }
 }
