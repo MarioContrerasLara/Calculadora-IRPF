@@ -837,47 +837,40 @@ function calcular(scroll = false) {
         return [31, 31, 30, 31, 30, 31, 31, 31, 30, 31, 30, 31][mes - 1];
     };
     
-    // Build per-month salary map (month 1–12 → salary for that month)
+    // Build per-month salary map (month 1–12 → MONTHLY salary for that month)
     const salarioPorMes = {};
-    let salarioActual = bruto + customDinAnual; // base salary
+    let currentAnnualSalary = bruto + customDinAnual; // Base salary
     
     for (let m = 1; m <= 12; m++) {
-        // Find adjustments that apply to this month
-        let indexOfAdjustment = -1;
-        let previousSalario = salarioActual;
+        // Check if there's an adjustment for this month
+        const adjustmentThisMonth = actualizacionItems.find(a => a.mes === m);
+        const adjustmentBefore = actualizacionItems.filter(a => a.mes < m);
         
-        for (let i = 0; i < actualizacionItems.length; i++) {
-            const adj = actualizacionItems[i];
-            if (adj.mes < m || (adj.mes === m && adj.dia <= 1)) {
-                // Adjustment starts before or on day 1 of this month
-                indexOfAdjustment = i;
-                previousSalario = salarioActual;
-                salarioActual = adj.nuevoSalario + customDinAnual;
-            } else if (adj.mes === m && adj.dia > 1) {
-                // Adjustment happens mid-month
-                indexOfAdjustment = i;
-                break;
-            } else {
-                break;
-            }
+        // Update currentAnnualSalary if there's an adjustment before this month
+        if (adjustmentBefore.length > 0) {
+            currentAnnualSalary = adjustmentBefore[adjustmentBefore.length - 1].nuevoSalario + customDinAnual;
         }
         
-        // Check if there's a mid-month adjustment in this month
-        let monthSalary = salarioActual;
-        if (indexOfAdjustment >= 0) {
-            const adj = actualizacionItems[indexOfAdjustment];
-            if (adj.mes === m && adj.dia > 1) {
-                // Pro-rata calculation
-                const daysInMonth = getDaysInMonth(m, parseInt(anio));
-                const daysOld = adj.dia - 1; // Days 1 to (dia-1) with old salary
-                const daysNew = daysInMonth - adj.dia + 1; // Days dia to end with new salary
-                
-                const oldMonthly = previousSalario / 12;
-                const newMonthly = (adj.nuevoSalario + customDinAnual) / 12;
-                
-                monthSalary = (oldMonthly * daysOld + newMonthly * daysNew) / daysInMonth;
-                salarioActual = adj.nuevoSalario + customDinAnual;
-            }
+        let monthSalary;
+        
+        if (!adjustmentThisMonth) {
+            // No adjustment this month - use current annual salary / 12
+            monthSalary = currentAnnualSalary / 12;
+        } else if (adjustmentThisMonth.dia === 1) {
+            // Adjustment on day 1 - use new salary for entire month
+            monthSalary = (adjustmentThisMonth.nuevoSalario + customDinAnual) / 12;
+            currentAnnualSalary = adjustmentThisMonth.nuevoSalario + customDinAnual;
+        } else {
+            // Pro-rata: part at old salary, part at new
+            const daysInMonth = getDaysInMonth(m, parseInt(anio));
+            const daysOld = adjustmentThisMonth.dia - 1;
+            const daysNew = daysInMonth - adjustmentThisMonth.dia + 1;
+            
+            const oldMonthly = currentAnnualSalary / 12;
+            const newMonthly = (adjustmentThisMonth.nuevoSalario + customDinAnual) / 12;
+            
+            monthSalary = (oldMonthly * daysOld + newMonthly * daysNew) / daysInMonth;
+            currentAnnualSalary = adjustmentThisMonth.nuevoSalario + customDinAnual;
         }
         
         salarioPorMes[m] = monthSalary;
