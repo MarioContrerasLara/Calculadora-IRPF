@@ -107,6 +107,16 @@
             </div>
         </details>
 
+        <!-- ACTUALIZACIÓN SALARIAL (collapsible) -->
+        <details class="especie-collapsible" id="actualizacionDetails">
+            <summary class="especie-toggle">📈 Actualización salarial <small>(opcional)</small></summary>
+            <div class="especie-body">
+                <p class="hint">Añade cambios salariales durante el año. Especifica la fecha del cambio. Si no es el primer día del mes, el importe se calculará proporcionalmente.</p>
+                <div id="actualizacionList"></div>
+                <button type="button" class="btn-add-especie" onclick="addActualizacionSalarial()">＋ Añadir cambio salarial</button>
+            </div>
+        </details>
+
         <!-- RETRIBUCIÓN EN ESPECIE (collapsible) -->
         <details class="especie-collapsible" id="especieDetails">
             <summary class="especie-toggle">🎁 Retribución en especie <small>(opcional)</small></summary>
@@ -147,7 +157,11 @@
 
                 <div class="especie-dual-group">
                     <label class="especie-dual-label">Ticket restaurante</label>
-                    <div class="especie-dual-inputs">
+                    <label class="especie-mode-toggle">
+                        <input type="checkbox" id="espTicketRestModeToggle" onchange="toggleTicketMode('espTicketRest')">
+                        <span class="toggle-label">Anual</span>
+                    </label>
+                    <div class="especie-dual-inputs" id="espTicketRest-monthly">
                         <div class="especie-dual-field">
                             <span class="especie-dual-tag tag-adicional">Adicional</span>
                             <input type="text" id="espTicketRestAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
@@ -157,12 +171,26 @@
                             <input type="text" id="espTicketRestFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
                         </div>
                     </div>
+                    <div class="especie-dual-inputs" id="espTicketRest-annual" style="display:none">
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-adicional">Adicional</span>
+                            <input type="text" id="espTicketRestAdAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-flexible">Flexible</span>
+                            <input type="text" id="espTicketRestFlAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                        </div>
+                    </div>
                     <small class="field-hint">Exento hasta 11 €/día laborable (Art. 42.3.a). El importe introducido se considera íntegramente exento.</small>
                 </div>
 
                 <div class="especie-dual-group">
                     <label class="especie-dual-label">Ticket transporte</label>
-                    <div class="especie-dual-inputs">
+                    <label class="especie-mode-toggle">
+                        <input type="checkbox" id="espTransporteModeToggle" onchange="toggleTicketMode('espTransporte')">
+                        <span class="toggle-label">Anual</span>
+                    </label>
+                    <div class="especie-dual-inputs" id="espTransporte-monthly">
                         <div class="especie-dual-field">
                             <span class="especie-dual-tag tag-adicional">Adicional</span>
                             <input type="text" id="espTransporteAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
@@ -170,6 +198,16 @@
                         <div class="especie-dual-field">
                             <span class="especie-dual-tag tag-flexible">Flexible</span>
                             <input type="text" id="espTransporteFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="especie-dual-inputs" id="espTransporte-annual" style="display:none">
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-adicional">Adicional</span>
+                            <input type="text" id="espTransporteAdAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="especie-dual-field">
+                            <span class="especie-dual-tag tag-flexible">Flexible</span>
+                            <input type="text" id="espTransporteFlAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
                         </div>
                     </div>
                     <small class="field-hint">Exento hasta 1.500 €/año (136,36 €/mes). Art. 42.3.e)</small>

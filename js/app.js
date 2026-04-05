@@ -548,6 +548,83 @@ function getBonusItems() {
     }).filter(b => b.importe > 0);
 }
 
+// ═══════════════════════════════════════════════════════════
+//  ACTUALIZACIÓN SALARIAL (Salary Adjustments)
+// ═══════════════════════════════════════════════════════════
+
+let actualizacionCounter = 0;
+
+function addActualizacionSalarial() {
+    actualizacionCounter++;
+    const row = document.createElement('div');
+    row.className = 'especie-custom-row';
+    row.id = 'actualizacionRow' + actualizacionCounter;
+    
+    row.innerHTML =
+        `<input type="text" class="actualizacion-nuevoSalario" placeholder="Nuevo salario anual (€)" inputmode="decimal" autocomplete="off">` +
+        `<input type="date" class="actualizacion-fecha" autocomplete="off">` +
+        `<button type="button" class="btn-remove-especie" onclick="removeActualizacionSalarial(this)" title="Eliminar">✕</button>`;
+    
+    document.getElementById('actualizacionList').appendChild(row);
+    row.querySelector('.actualizacion-nuevoSalario').addEventListener('input', () => scheduleCalcGlobal());
+    row.querySelector('.actualizacion-fecha').addEventListener('change', () => scheduleCalcGlobal());
+    row.querySelector('.actualizacion-nuevoSalario').focus();
+}
+
+function removeActualizacionSalarial(btn) {
+    btn.closest('.especie-custom-row').remove();
+    scheduleCalcGlobal();
+}
+
+function getActualizacionSalarialItems() {
+    return Array.from(document.querySelectorAll('#actualizacionList .especie-custom-row')).map(row => {
+        const raw = row.querySelector('.actualizacion-nuevoSalario').value.replace(/[^\d,.\-]/g, '');
+        let nuevoSalario = 0;
+        if (raw) {
+            let n = raw;
+            if (raw.includes(',')) n = raw.replace(/\./g, '').replace(',', '.');
+            const f = parseFloat(n);
+            nuevoSalario = isNaN(f) || f < 0 ? 0 : f;
+        }
+        
+        const fechaInput = row.querySelector('.actualizacion-fecha').value; // Format: YYYY-MM-DD
+        let mes = 0, dia = 0;
+        
+        if (fechaInput) {
+            const [year, month, day] = fechaInput.split('-');
+            mes = parseInt(month, 10);
+            dia = parseInt(day, 10);
+        }
+        
+        return { nuevoSalario, mes, dia };
+    }).filter(a => a.nuevoSalario > 0 && a.mes >= 1 && a.mes <= 12 && a.dia >= 1 && a.dia <= 31);
+}
+
+// ─── Toggle Monthly/Annual mode for tickets ────
+function toggleTicketMode(ticketType) {
+    // ticketType: 'espTicketRest' or 'espTransporte'
+    const toggle = document.getElementById(`${ticketType}ModeToggle`);
+    const monthlyDiv = document.getElementById(`${ticketType}-monthly`);
+    const annualDiv = document.getElementById(`${ticketType}-annual`);
+    const monthlyInputs = monthlyDiv.querySelectorAll('input[type="text"]');
+    const annualInputs = annualDiv.querySelectorAll('input[type="text"]');
+    
+    if (toggle.checked) {
+        // Switch to Annual mode
+        monthlyDiv.style.display = 'none';
+        annualDiv.style.display = 'flex';
+        // Clear annual inputs when switching
+        annualInputs.forEach(inp => inp.value = '');
+    } else {
+        // Switch to Monthly mode
+        monthlyDiv.style.display = 'flex';
+        annualDiv.style.display = 'none';
+        // Clear monthly inputs when switching
+        monthlyInputs.forEach(inp => inp.value = '');
+    }
+    scheduleCalcGlobal();
+}
+
 // Placeholder overwritten once calcular auto-recalc is set up
 let scheduleCalcGlobal = function() {};
 
@@ -708,12 +785,32 @@ function calcular(scroll = false) {
     const espSeguroMedico = segMedicoAd + segMedicoFl;
     const espSeguroMedicoBenef = parseInt(document.getElementById('espSeguroMedicoBenef').value, 10);
 
-    const ticketRestAd = parseEuro('espTicketRestAd') * 12;
-    const ticketRestFl = parseEuro('espTicketRestFl') * 12;
+    // Ticket restaurante - handle monthly vs annual
+    let ticketRestAd, ticketRestFl;
+    const ticketRestMode = document.getElementById('espTicketRestModeToggle').checked; // true = annual
+    if (ticketRestMode) {
+        // Annual mode
+        ticketRestAd = parseEuro('espTicketRestAdAnnual');
+        ticketRestFl = parseEuro('espTicketRestFlAnnual');
+    } else {
+        // Monthly mode (x12)
+        ticketRestAd = parseEuro('espTicketRestAd') * 12;
+        ticketRestFl = parseEuro('espTicketRestFl') * 12;
+    }
     const espTicketRest = ticketRestAd + ticketRestFl;
 
-    let transporteAd = parseEuro('espTransporteAd') * 12;
-    let transporteFl = parseEuro('espTransporteFl') * 12;
+    // Ticket transporte - handle monthly vs annual
+    let transporteAd, transporteFl;
+    const transporteMode = document.getElementById('espTransporteModeToggle').checked; // true = annual
+    if (transporteMode) {
+        // Annual mode
+        transporteAd = parseEuro('espTransporteAdAnnual');
+        transporteFl = parseEuro('espTransporteFlAnnual');
+    } else {
+        // Monthly mode (x12)
+        transporteAd = parseEuro('espTransporteAd') * 12;
+        transporteFl = parseEuro('espTransporteFl') * 12;
+    }
     const maxTransporte = ESPECIE.transporteExentoAnual;       // 1 500 €/año máximo absoluto
     const rawTransporte = transporteAd + transporteFl;
     if (rawTransporte > maxTransporte) {
@@ -772,7 +869,64 @@ function calcular(scroll = false) {
     bonusItems.forEach(b => {
         bonusPorMes[b.mes] = (bonusPorMes[b.mes] || 0) + b.importe;
     });
-    const brutoConBonus = bruto + bonusTotal + customDinAnual;
+
+    // ── Actualización salarial (Salary Adjustments) ──
+    const actualizacionItems = getActualizacionSalarialItems();
+    // Sort by month, then by day to find the applicable salary for each month
+    actualizacionItems.sort((a, b) => a.mes !== b.mes ? a.mes - b.mes : a.dia - b.dia);
+    
+    // Helper to get days in month
+    const getDaysInMonth = (mes, anio) => {
+        if (mes === 2) return (anio % 4 === 0 && (anio % 100 !== 0 || anio % 400 === 0)) ? 29 : 28;
+        return [31, 31, 30, 31, 30, 31, 31, 31, 30, 31, 30, 31][mes - 1];
+    };
+    
+    // Build per-month salary map (month 1–12 → MONTHLY salary for that month)
+    const salarioPorMes = {};
+    let currentAnnualSalary = bruto + customDinAnual; // Base salary
+    
+    for (let m = 1; m <= 12; m++) {
+        // Check if there's an adjustment for this month
+        const adjustmentThisMonth = actualizacionItems.find(a => a.mes === m);
+        const adjustmentBefore = actualizacionItems.filter(a => a.mes < m);
+        
+        // Update currentAnnualSalary if there's an adjustment before this month
+        if (adjustmentBefore.length > 0) {
+            currentAnnualSalary = adjustmentBefore[adjustmentBefore.length - 1].nuevoSalario + customDinAnual;
+        }
+        
+        let monthSalary;
+        
+        if (!adjustmentThisMonth) {
+            // No adjustment this month - use current annual salary / 12
+            monthSalary = currentAnnualSalary / 12;
+        } else if (adjustmentThisMonth.dia === 1) {
+            // Adjustment on day 1 - use new salary for entire month
+            monthSalary = (adjustmentThisMonth.nuevoSalario + customDinAnual) / 12;
+            currentAnnualSalary = adjustmentThisMonth.nuevoSalario + customDinAnual;
+        } else {
+            // Pro-rata: part at old salary, part at new
+            const daysInMonth = getDaysInMonth(m, parseInt(anio));
+            const daysOld = adjustmentThisMonth.dia - 1;
+            const daysNew = daysInMonth - adjustmentThisMonth.dia + 1;
+            
+            const oldMonthly = currentAnnualSalary / 12;
+            const newMonthly = (adjustmentThisMonth.nuevoSalario + customDinAnual) / 12;
+            
+            monthSalary = (oldMonthly * daysOld + newMonthly * daysNew) / daysInMonth;
+            currentAnnualSalary = adjustmentThisMonth.nuevoSalario + customDinAnual;
+        }
+        
+        salarioPorMes[m] = monthSalary;
+    }
+    
+    // Calculate total annual gross with adjustments and bonuses
+    let brutoAnualConAjustes = 0;
+    for (let m = 1; m <= 12; m++) {
+        brutoAnualConAjustes += salarioPorMes[m] + (bonusPorMes[m] || 0);
+    }
+    
+    const brutoConBonus = brutoAnualConAjustes;
 
     if (cnaeInput) {
         const result = buscarTarifaAT(cnaeInput);
@@ -797,16 +951,16 @@ function calcular(scroll = false) {
     const baseMin = BASES.minByGroup[grupo] || BASES.minByGroup[4];
     const baseMax = BASES.max;
 
-    // Per-month SS base (bonus months may hit a higher capped base)
-    const brutoMensual = (bruto + customDinAnual) / 12;
+    // Per-month SS base (adjusted salaries, bonuses may hit a higher capped base)
     let totalSSbaseAnual = 0;
     for (let m = 1; m <= 12; m++) {
-        const brutoMes = brutoMensual + (bonusPorMes[m] || 0);
+        const brutoMes = salarioPorMes[m] + (bonusPorMes[m] || 0);
         const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
         totalSSbaseAnual += baseMes;
     }
     // Display base (weighted average) and representative base for ordinary months
-    const baseSSmensualSinBonus = Math.min(Math.max(brutoMensual, baseMin), baseMax);
+    const brutoMensualBase = (bruto + customDinAnual) / 12;
+    const baseSSmensualSinBonus = Math.min(Math.max(brutoMensualBase, baseMin), baseMax);
     const baseSSmensual = totalSSbaseAnual / 12;
 
     const desempleoW = SS_DESEMPLEO_WORKER[contrato];
@@ -1143,16 +1297,30 @@ function calcular(scroll = false) {
     }
     monthItems.push({ lbl: 'Neto mes ordinario', val: fmt(netoMesOrdinario) + ' €' });
 
-    // Show each bonus month (aggregate bonuses by month)
-    Object.entries(bonusPorMes).sort((a, b) => a[0] - b[0]).forEach(([mesStr, mesBonus]) => {
-        const mes = parseInt(mesStr, 10);
-        const brutoMes = brutoMensual + mesBonus;
+    // Show each month with bonuses or salary adjustments
+    const allSpecialMonths = new Set();
+    Object.keys(bonusPorMes).forEach(m => allSpecialMonths.add(parseInt(m, 10)));
+    Object.keys(salarioPorMes).forEach(m => {
+        if (salarioPorMes[m] !== salarioPorMes[m - 1] && m > 1) {
+            allSpecialMonths.add(parseInt(m, 10));
+        }
+    });
+    
+    allSpecialMonths.forEach(mes => {
+        const salarioMes = salarioPorMes[mes] || brutoMensualBase;
+        const mesBonus = bonusPorMes[mes] || 0;
+        const brutoMes = salarioMes + mesBonus;
         const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
         const ssMes = conceptosSS.reduce((s, c) => s + baseMes * (c.tipo / 100), 0);
-        const netoMes = brutoPorPaga + mesBonus - ssMes - mensualIRPF - mensualFlex;
-        monthItems.push({ lbl: `Bruto ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(brutoPorPaga + mesBonus) + ' €' });
-        monthItems.push({ lbl: `SS ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(ssMes) + ' €' });
-        monthItems.push({ lbl: `Neto ${MESES_LABELS[mes - 1]} (con bonus)`, val: fmt(netoMes) + ' €' });
+        const netoMes = brutoMes / (numPagas === 14 ? 14 : 12) - ssMes - mensualIRPF - mensualFlex;
+        
+        let label = `${MESES_LABELS[mes - 1]} (bruto)`;
+        if (mesBonus > 0) label += ` + bonus`;
+        if (salarioPorMes[mes] !== salarioPorMes[mes - 1] && mes > 1) label += ` *actualizado*`;
+        
+        monthItems.push({ lbl: label, val: fmt(brutoMes) + ' €' });
+        monthItems.push({ lbl: `SS ${MESES_LABELS[mes - 1]}`, val: fmt(ssMes) + ' €' });
+        monthItems.push({ lbl: `Neto ${MESES_LABELS[mes - 1]}`, val: fmt(netoMes) + ' €' });
     });
 
     if (numPagas === 14) {
@@ -1215,7 +1383,9 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
 
     // Especie inputs — debounced (delegated on their containers)
     ['espSeguroMedicoAd','espSeguroMedicoFl','espTicketRestAd','espTicketRestFl',
-     'espTransporteAd','espTransporteFl','espSeguroMedicoBenef'].forEach(id => {
+     'espTicketRestAdAnnual','espTicketRestFlAnnual',
+     'espTransporteAd','espTransporteFl','espTransporteAdAnnual','espTransporteFlAnnual',
+     'espSeguroMedicoBenef'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', scheduleCalc);
     });
