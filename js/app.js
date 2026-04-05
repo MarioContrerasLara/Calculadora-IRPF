@@ -560,23 +560,14 @@ function addActualizacionSalarial() {
     row.className = 'especie-custom-row';
     row.id = 'actualizacionRow' + actualizacionCounter;
     
-    const mesOpts = MESES_LABELS.map((m, i) =>
-        `<option value="${i + 1}"${i === 0 ? ' selected' : ''}>${m}</option>`
-    ).join('');
-    
-    const diaOpts = Array.from({length: 31}, (_, i) => i + 1)
-        .map(d => `<option value="${d}"${d === 1 ? ' selected' : ''}>${d}</option>`).join('');
-    
     row.innerHTML =
         `<input type="text" class="actualizacion-nuevoSalario" placeholder="Nuevo salario anual (€)" inputmode="decimal" autocomplete="off">` +
-        `<select class="actualizacion-mes">${mesOpts}</select>` +
-        `<select class="actualizacion-dia"><option value="">Día</option>${diaOpts}</select>` +
+        `<input type="date" class="actualizacion-fecha" autocomplete="off">` +
         `<button type="button" class="btn-remove-especie" onclick="removeActualizacionSalarial(this)" title="Eliminar">✕</button>`;
     
     document.getElementById('actualizacionList').appendChild(row);
     row.querySelector('.actualizacion-nuevoSalario').addEventListener('input', () => scheduleCalcGlobal());
-    row.querySelector('.actualizacion-mes').addEventListener('change', () => scheduleCalcGlobal());
-    row.querySelector('.actualizacion-dia').addEventListener('change', () => scheduleCalcGlobal());
+    row.querySelector('.actualizacion-fecha').addEventListener('change', () => scheduleCalcGlobal());
     row.querySelector('.actualizacion-nuevoSalario').focus();
 }
 
@@ -595,8 +586,16 @@ function getActualizacionSalarialItems() {
             const f = parseFloat(n);
             nuevoSalario = isNaN(f) || f < 0 ? 0 : f;
         }
-        const mes = parseInt(row.querySelector('.actualizacion-mes').value, 10);
-        const dia = parseInt(row.querySelector('.actualizacion-dia').value, 10) || 1;
+        
+        const fechaInput = row.querySelector('.actualizacion-fecha').value; // Format: YYYY-MM-DD
+        let mes = 0, dia = 0;
+        
+        if (fechaInput) {
+            const [year, month, day] = fechaInput.split('-');
+            mes = parseInt(month, 10);
+            dia = parseInt(day, 10);
+        }
+        
         return { nuevoSalario, mes, dia };
     }).filter(a => a.nuevoSalario > 0 && a.mes >= 1 && a.mes <= 12 && a.dia >= 1 && a.dia <= 31);
 }
