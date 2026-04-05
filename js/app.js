@@ -600,6 +600,31 @@ function getActualizacionSalarialItems() {
     }).filter(a => a.nuevoSalario > 0 && a.mes >= 1 && a.mes <= 12 && a.dia >= 1 && a.dia <= 31);
 }
 
+// ─── Toggle Monthly/Annual mode for tickets ────
+function toggleTicketMode(ticketType) {
+    // ticketType: 'espTicketRest' or 'espTransporte'
+    const toggle = document.getElementById(`${ticketType}ModeToggle`);
+    const monthlyDiv = document.getElementById(`${ticketType}-monthly`);
+    const annualDiv = document.getElementById(`${ticketType}-annual`);
+    const monthlyInputs = monthlyDiv.querySelectorAll('input[type="text"]');
+    const annualInputs = annualDiv.querySelectorAll('input[type="text"]');
+    
+    if (toggle.checked) {
+        // Switch to Annual mode
+        monthlyDiv.style.display = 'none';
+        annualDiv.style.display = 'flex';
+        // Clear annual inputs when switching
+        annualInputs.forEach(inp => inp.value = '');
+    } else {
+        // Switch to Monthly mode
+        monthlyDiv.style.display = 'flex';
+        annualDiv.style.display = 'none';
+        // Clear monthly inputs when switching
+        monthlyInputs.forEach(inp => inp.value = '');
+    }
+    scheduleCalcGlobal();
+}
+
 // Placeholder overwritten once calcular auto-recalc is set up
 let scheduleCalcGlobal = function() {};
 
@@ -760,12 +785,32 @@ function calcular(scroll = false) {
     const espSeguroMedico = segMedicoAd + segMedicoFl;
     const espSeguroMedicoBenef = parseInt(document.getElementById('espSeguroMedicoBenef').value, 10);
 
-    const ticketRestAd = parseEuro('espTicketRestAd') * 12;
-    const ticketRestFl = parseEuro('espTicketRestFl') * 12;
+    // Ticket restaurante - handle monthly vs annual
+    let ticketRestAd, ticketRestFl;
+    const ticketRestMode = document.getElementById('espTicketRestModeToggle').checked; // true = annual
+    if (ticketRestMode) {
+        // Annual mode
+        ticketRestAd = parseEuro('espTicketRestAdAnnual');
+        ticketRestFl = parseEuro('espTicketRestFlAnnual');
+    } else {
+        // Monthly mode (x12)
+        ticketRestAd = parseEuro('espTicketRestAd') * 12;
+        ticketRestFl = parseEuro('espTicketRestFl') * 12;
+    }
     const espTicketRest = ticketRestAd + ticketRestFl;
 
-    let transporteAd = parseEuro('espTransporteAd') * 12;
-    let transporteFl = parseEuro('espTransporteFl') * 12;
+    // Ticket transporte - handle monthly vs annual
+    let transporteAd, transporteFl;
+    const transporteMode = document.getElementById('espTransporteModeToggle').checked; // true = annual
+    if (transporteMode) {
+        // Annual mode
+        transporteAd = parseEuro('espTransporteAdAnnual');
+        transporteFl = parseEuro('espTransporteFlAnnual');
+    } else {
+        // Monthly mode (x12)
+        transporteAd = parseEuro('espTransporteAd') * 12;
+        transporteFl = parseEuro('espTransporteFl') * 12;
+    }
     const maxTransporte = ESPECIE.transporteExentoAnual;       // 1 500 €/año máximo absoluto
     const rawTransporte = transporteAd + transporteFl;
     if (rawTransporte > maxTransporte) {
@@ -1338,7 +1383,9 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
 
     // Especie inputs — debounced (delegated on their containers)
     ['espSeguroMedicoAd','espSeguroMedicoFl','espTicketRestAd','espTicketRestFl',
-     'espTransporteAd','espTransporteFl','espSeguroMedicoBenef'].forEach(id => {
+     'espTicketRestAdAnnual','espTicketRestFlAnnual',
+     'espTransporteAd','espTransporteFl','espTransporteAdAnnual','espTransporteFlAnnual',
+     'espSeguroMedicoBenef'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', scheduleCalc);
     });
