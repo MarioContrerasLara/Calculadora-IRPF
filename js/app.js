@@ -560,18 +560,23 @@ function addActualizacionSalarial() {
     row.className = 'especie-custom-row';
     row.id = 'actualizacionRow' + actualizacionCounter;
     
-    const opts = MESES_LABELS.map((m, i) =>
+    const mesOpts = MESES_LABELS.map((m, i) =>
         `<option value="${i + 1}"${i === 0 ? ' selected' : ''}>${m}</option>`
     ).join('');
     
+    const diaOpts = Array.from({length: 31}, (_, i) => i + 1)
+        .map(d => `<option value="${d}"${d === 1 ? ' selected' : ''}>${d}</option>`).join('');
+    
     row.innerHTML =
         `<input type="text" class="actualizacion-nuevoSalario" placeholder="Nuevo salario anual (€)" inputmode="decimal" autocomplete="off">` +
-        `<select class="actualizacion-mes">${opts}</select>` +
+        `<select class="actualizacion-mes">${mesOpts}</select>` +
+        `<select class="actualizacion-dia"><option value="">Día</option>${diaOpts}</select>` +
         `<button type="button" class="btn-remove-especie" onclick="removeActualizacionSalarial(this)" title="Eliminar">✕</button>`;
     
     document.getElementById('actualizacionList').appendChild(row);
     row.querySelector('.actualizacion-nuevoSalario').addEventListener('input', () => scheduleCalcGlobal());
     row.querySelector('.actualizacion-mes').addEventListener('change', () => scheduleCalcGlobal());
+    row.querySelector('.actualizacion-dia').addEventListener('change', () => scheduleCalcGlobal());
     row.querySelector('.actualizacion-nuevoSalario').focus();
 }
 
@@ -591,8 +596,9 @@ function getActualizacionSalarialItems() {
             nuevoSalario = isNaN(f) || f < 0 ? 0 : f;
         }
         const mes = parseInt(row.querySelector('.actualizacion-mes').value, 10);
-        return { nuevoSalario, mes };
-    }).filter(a => a.nuevoSalario > 0 && a.mes >= 1 && a.mes <= 12);
+        const dia = parseInt(row.querySelector('.actualizacion-dia').value, 10) || 1;
+        return { nuevoSalario, mes, dia };
+    }).filter(a => a.nuevoSalario > 0 && a.mes >= 1 && a.mes <= 12 && a.dia >= 1 && a.dia <= 31);
 }
 
 // Placeholder overwritten once calcular auto-recalc is set up
@@ -822,21 +828,59 @@ function calcular(scroll = false) {
 
     // ── Actualización salarial (Salary Adjustments) ──
     const actualizacionItems = getActualizacionSalarialItems();
-    // Sort by month to find the applicable salary for each month
-    actualizacionItems.sort((a, b) => a.mes - b.mes);
+    // Sort by month, then by day to find the applicable salary for each month
+    actualizacionItems.sort((a, b) => a.mes !== b.mes ? a.mes - b.mes : a.dia - b.dia);
+    
+    // Helper to get days in month
+    const getDaysInMonth = (mes, anio) => {
+        if (mes === 2) return (anio % 4 === 0 && (anio % 100 !== 0 || anio % 400 === 0)) ? 29 : 28;
+        return [31, 31, 30, 31, 30, 31, 31, 31, 30, 31, 30, 31][mes - 1];
+    };
     
     // Build per-month salary map (month 1–12 → salary for that month)
     const salarioPorMes = {};
     let salarioActual = bruto + customDinAnual; // base salary
-    let actualizacionIdx = 0;
     
     for (let m = 1; m <= 12; m++) {
-        // Check if there's a salary adjustment starting from this month or earlier
-        while (actualizacionIdx < actualizacionItems.length && actualizacionItems[actualizacionIdx].mes <= m) {
-            salarioActual = actualizacionItems[actualizacionIdx].nuevoSalario + customDinAnual;
-            actualizacionIdx++;
+        // Find adjustments that apply to this month
+        let indexOfAdjustment = -1;
+        let previousSalario = salarioActual;
+        
+        for (let i = 0; i < actualizacionItems.length; i++) {
+            const adj = actualizacionItems[i];
+            if (adj.mes < m || (adj.mes === m && adj.dia <= 1)) {
+                // Adjustment starts before or on day 1 of this month
+                indexOfAdjustment = i;
+                previousSalario = salarioActual;
+                salarioActual = adj.nuevoSalario + customDinAnual;
+            } else if (adj.mes === m && adj.dia > 1) {
+                // Adjustment happens mid-month
+                indexOfAdjustment = i;
+                break;
+            } else {
+                break;
+            }
         }
-        salarioPorMes[m] = salarioActual;
+        
+        // Check if there's a mid-month adjustment in this month
+        let monthSalary = salarioActual;
+        if (indexOfAdjustment >= 0) {
+            const adj = actualizacionItems[indexOfAdjustment];
+            if (adj.mes === m && adj.dia > 1) {
+                // Pro-rata calculation
+                const daysInMonth = getDaysInMonth(m, parseInt(anio));
+                const daysOld = adj.dia - 1; // Days 1 to (dia-1) with old salary
+                const daysNew = daysInMonth - adj.dia + 1; // Days dia to end with new salary
+                
+                const oldMonthly = previousSalario / 12;
+                const newMonthly = (adj.nuevoSalario + customDinAnual) / 12;
+                
+                monthSalary = (oldMonthly * daysOld + newMonthly * daysNew) / daysInMonth;
+                salarioActual = adj.nuevoSalario + customDinAnual;
+            }
+        }
+        
+        salarioPorMes[m] = monthSalary;
     }
     
     // Calculate total annual gross with adjustments and bonuses

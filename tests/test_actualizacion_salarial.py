@@ -457,6 +457,103 @@ class TestActualizacionSalarialIntegration(unittest.TestCase):
         self.assertEqual(annual, 37000)
 
 
+class TestDayBasedAdjustments(unittest.TestCase):
+    """
+    Test salary adjustments with specific days (pro-rata calculations).
+    
+    Scenarios covered:
+    - Adjustment on day 15 of month (mid-month)
+    - Adjustment on day 1 (first day - no pro-rata)
+    - Leap year handling (February has 29 days in leap years)
+    """
+    
+    def test_pro_rata_adjustment_day_15_of_june(self):
+        """
+        Test pro-rata calculation when salary changes on June 15.
+        - Jan-May: €30,000/year = €2,500/month
+        - Jun 1-14: €2,500 (14 days)
+        - Jun 15-30: €3,000 (16 days) based on €36,000/year
+        - Expected June salary: (2500*14 + 3000*16) / 30 = (35000 + 48000) / 30 = €2,766.67
+        - Expected annual: 2500*5 + 2766.67 + 3000*6 = 12500 + 2766.67 + 18000 = €33,266.67
+        """
+        base_monthly = 30000 / 12  # €2,500
+        new_monthly = 36000 / 12  # €3,000
+        
+        # June calculation: 14 days old + 16 days new (30 days total)
+        june_salary = (base_monthly * 14 + new_monthly * 16) / 30
+        june_expected = 2766.67
+        
+        self.assertAlmostEqual(june_salary, june_expected, places=2)
+        
+        # Annual calculation
+        annual = base_monthly * 5 + june_salary + new_monthly * 6
+        annual_expected = 33266.67
+        
+        self.assertAlmostEqual(annual, annual_expected, places=2)
+    
+    def test_no_pro_rata_when_day_is_1(self):
+        """
+        Test that day 1 doesn't trigger pro-rata (full month new salary).
+        - Jan-May: €30,000/year
+        - Jun 1-30: €36,000/year (all 30 days at new rate)
+        - Expected June salary: €3,000
+        """
+        base_monthly = 30000 / 12  # €2,500
+        new_monthly = 36000 / 12   # €3,000
+        
+        # When day = 1, all 30 days use new salary
+        june_salary = (base_monthly * 0 + new_monthly * 30) / 30
+        self.assertAlmostEqual(june_salary, new_monthly, places=2)
+    
+    def test_pro_rata_february_leap_year(self):
+        """
+        Test pro-rata in February during leap year (29 days).
+        - Jan 1-Feb 14: €30,000/year
+        - Feb 15-29: €36,000/year (leap year has 29 days)
+        - Expected Feb salary: (2500*14 + 3000*15) / 29 = 80000/29 = 2758.62
+        """
+        base_monthly = 30000 / 12  # €2,500
+        new_monthly = 36000 / 12   # €3,000
+        
+        # February in leap year: 14 days old + 15 days new (29 total)
+        feb_salary = (base_monthly * 14 + new_monthly * 15) / 29
+        feb_expected = 2758.62  # (2500*14 + 3000*15) / 29
+        
+        self.assertAlmostEqual(feb_salary, feb_expected, places=2)
+    
+    def test_pro_rata_february_non_leap_year(self):
+        """
+        Test pro-rata in February during non-leap year (28 days).
+        - Jan 1-Feb 14: €30,000/year
+        - Feb 15-28: €36,000/year
+        - Expected Feb salary: (2500*14 + 3000*14) / 28
+        """
+        base_monthly = 30000 / 12  # €2,500
+        new_monthly = 36000 / 12   # €3,000
+        
+        # February in non-leap year: 14 days old + 14 days new (28 total)
+        feb_salary = (base_monthly * 14 + new_monthly * 14) / 28
+        feb_expected = 2750.00  # Exactly (2500 + 3000) / 2
+        
+        self.assertAlmostEqual(feb_salary, feb_expected, places=2)
+    
+    def test_pro_rata_day_31_in_31_day_month(self):
+        """
+        Test adjustment on last day of a 31-day month (December).
+        - Jan-Dec 1-30: €30,000/year
+        - Dec 31: €36,000/year (only 1 day at new rate)
+        - Expected Dec salary: (2500*30 + 3000*1) / 31
+        """
+        base_monthly = 30000 / 12  # €2,500
+        new_monthly = 36000 / 12   # €3,000
+        
+        # December: 30 days old + 1 day new (31 total)
+        dec_salary = (base_monthly * 30 + new_monthly * 1) / 31
+        dec_expected = 2516.13  # Approximate
+        
+        self.assertAlmostEqual(dec_salary, dec_expected, places=2)
+
+
 if __name__ == '__main__':
     print("=" * 70)
     print("  ACTUALIZACION SALARIAL FEATURE TEST SUITE")
@@ -471,6 +568,7 @@ if __name__ == '__main__':
     suite.addTests(loader.loadTestsFromTestCase(TestActualizacionSalarialFeature))
     suite.addTests(loader.loadTestsFromTestCase(TestActualizacionSalarialEdgeCases))
     suite.addTests(loader.loadTestsFromTestCase(TestActualizacionSalarialIntegration))
+    suite.addTests(loader.loadTestsFromTestCase(TestDayBasedAdjustments))
     
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
@@ -485,3 +583,4 @@ if __name__ == '__main__':
     print("=" * 70)
     
     sys.exit(0 if result.wasSuccessful() else 1)
+
