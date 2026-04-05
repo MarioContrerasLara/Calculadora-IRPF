@@ -449,6 +449,61 @@ input.input-error {
     box-shadow: 0 0 0 3px var(--brand-glow);
 }
 
+/* ── Salary adjustment (Actualización) row ── */
+
+.actualizacion-nuevoSalario {
+    flex: 1.5;
+    min-width: 120px;
+    padding: .6rem .85rem;
+    font-size: .88rem;
+    font-family: inherit;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    border: 1.5px solid var(--gray-300);
+    border-radius: var(--radius-xs);
+    outline: none;
+    transition: border-color .2s var(--ease),
+                background .2s var(--ease),
+                box-shadow .2s var(--ease);
+}
+
+.actualizacion-nuevoSalario:focus {
+    border-color: var(--brand);
+    background: white;
+    box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.actualizacion-mes,
+.actualizacion-dia {
+    flex: 1;
+    min-width: 90px;
+    padding: .6rem .85rem;
+    font-size: .88rem;
+    font-family: inherit;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    border: 1.5px solid var(--gray-300);
+    border-radius: var(--radius-xs);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236e6e73' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .75rem center;
+    padding-right: 2.2rem;
+    transition: border-color .2s var(--ease),
+                background-color .2s var(--ease),
+                box-shadow .2s var(--ease);
+}
+
+.actualizacion-mes:focus,
+.actualizacion-dia:focus {
+    border-color: var(--brand);
+    background-color: white;
+    box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
 /* ── Action buttons ── */
 
 .btn-remove-especie {
