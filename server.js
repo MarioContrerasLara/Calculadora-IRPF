@@ -2,15 +2,19 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 443;
+const HTTPS_PORT = process.env.HTTPS_PORT || 443;
 const BASE = path.resolve(__dirname);
 
-const CERTS = {
-    key:  fs.readFileSync('/home/mario/mario.gal/privkey1.pem'),
-    cert: fs.readFileSync('/home/mario/mario.gal/fullchain1.pem'),
-    minVersion: 'TLSv1.3',
-    maxVersion: 'TLSv1.3',
-};
+const SSL_KEY = process.env.SSL_KEY || '/home/mario/mario.gal/privkey.pem';
+const SSL_CERT = process.env.SSL_CERT || '/home/mario/mario.gal/fullchain.pem';
+
+const DOMAIN = 'mario.gal';
+
+function validHost(host) {
+    if (!host) return false;
+    const h = host.split(':')[0].toLowerCase();
+    return h === DOMAIN || h.endsWith('.' + DOMAIN);
+}
 
 const MIME = {
     '.html': 'text/html; charset=utf-8',
@@ -26,24 +30,25 @@ const MIME = {
 };
 
 const SECURITY_HEADERS = {
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'X-Content-Type-Options':    'nosniff',
     'X-Frame-Options':           'DENY',
     'Referrer-Policy':           'strict-origin-when-cross-origin',
-    'Content-Security-Policy':   "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
 
-https.createServer(CERTS, (req, res) => {
-    // Prevent path traversal
+function handleRequest(req, res) {
+    if (!validHost(req.headers.host)) {
+        res.writeHead(403, SECURITY_HEADERS);
+        res.end('Forbidden');
+        return;
+    }
     const safePath = path.normalize(req.url.split('?')[0]).replace(/^(\.\.[\/\\])+/, '');
     let filePath = path.join(BASE, safePath);
 
-    // Default to index.html
     if (filePath === BASE || filePath === BASE + path.sep) {
         filePath = path.join(BASE, 'index.html');
     }
 
-    // Block access outside BASE
     if (!filePath.startsWith(BASE)) {
         res.writeHead(403, SECURITY_HEADERS);
         res.end('Forbidden');
@@ -52,7 +57,6 @@ https.createServer(CERTS, (req, res) => {
 
     fs.stat(filePath, (err, stat) => {
         if (err || !stat.isFile()) {
-            // Try appending index.html for directories
             const indexPath = path.join(filePath, 'index.html');
             fs.stat(indexPath, (err2, stat2) => {
                 if (err2 || !stat2.isFile()) {
@@ -66,9 +70,7 @@ https.createServer(CERTS, (req, res) => {
             serveFile(filePath, res);
         }
     });
-}).listen(PORT, () => {
-    console.log(`HTTPS server running on port ${PORT}`);
-});
+}
 
 function serveFile(filePath, res) {
     const ext = path.extname(filePath).toLowerCase();
@@ -79,8 +81,14 @@ function serveFile(filePath, res) {
             res.end('Internal Server Error');
             return;
         }
-        const cacheHeader = ['.css', '.js'].includes(path.extname(filePath).toLowerCase()) ? { 'Cache-Control': 'no-cache' } : {};
+        const cacheHeader = ['.css', '.js'].includes(ext) ? { 'Cache-Control': 'no-cache' } : {};
         res.writeHead(200, { ...SECURITY_HEADERS, ...cacheHeader, 'Content-Type': contentType });
         res.end(data);
     });
 }
+
+const key = fs.readFileSync(SSL_KEY);
+const cert = fs.readFileSync(SSL_CERT);
+https.createServer({ key, cert }, handleRequest).listen(HTTPS_PORT, () => {
+    console.log(`HTTPS server running on https://0.0.0.0:${HTTPS_PORT}`);
+});
