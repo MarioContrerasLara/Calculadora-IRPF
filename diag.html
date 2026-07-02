@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Diagnóstico de versión · mario.gal</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #1f2937; }
+  h1 { font-size: 18px; }
+  .ok { color: #047857; font-weight: 600; }
+  .bad { color: #b91c1c; font-weight: 600; }
+  pre { background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+  .row { border-bottom: 1px solid #e5e7eb; padding: 10px 0; }
+  .label { font-weight: 600; font-size: 13px; }
+  .hint { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 10px 14px; margin: 14px 0; font-size: 13px; }
+  .err { color: #b91c1c; font-family: monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>Diagnóstico de versión · mario.gal</h1>
+<p>Esta página se sirve desde el mismo servidor que la app.</p>
+<div id="out">Cargando diagnóstico...</div>
+<script>
+(function () {
+  const out = document.getElementById('out');
+  const log = (msg, cls) => {
+    const d = document.createElement('div');
+    d.className = cls || '';
+    d.textContent = msg;
+    out.appendChild(d);
+  };
+  const ok = (label, detail) => log('✓ ' + label + ' — ' + detail, 'ok');
+  const bad = (label, detail) => log('✗ ' + label + ' — ' + detail, 'bad');
+
+  function xhr(url) {
+    return new Promise((resolve, reject) => {
+      const X = window.XMLHttpRequest;
+      if (!X) return reject(new Error('XMLHttpRequest no soportado'));
+      const r = new X();
+      r.open('GET', url, true);
+      r.timeout = 5000;
+      r.onload = () => resolve({ status: r.status, text: r.responseText });
+      r.onerror = () => reject(new Error('error de red para ' + url));
+      r.ontimeout = () => reject(new Error('timeout para ' + url));
+      try { r.send(); } catch (e) { reject(e); }
+    });
+  }
+
+  (async () => {
+    log('URL de esta página: ' + location.href);
+    log('Protocolo: ' + location.protocol);
+    log('---');
+
+    // CSS de la página principal
+    try {
+      const r = await xhr('/');
+      const html = r.text;
+      const cssLink = html.match(/href="css\/styles\.css\?v=(\d+)"/);
+      log('CSS href en HTML: ' + (cssLink ? cssLink[0] : 'no encontrado'), cssLink ? '' : 'bad');
+      const swatchCount = (html.match(/scheme-swatch/g) || []).length;
+      log('HTML contiene scheme-swatch: ' + swatchCount + ' veces', swatchCount >= 7 ? 'ok' : 'bad');
+    } catch (e) { bad('fetch /', e.message); }
+    log('---');
+
+    // CSS servido por el servidor en cada versión
+    for (const v of [65, 66, 67, 68]) {
+      try {
+        const r = await xhr('/css/styles.css?v=' + v);
+        const t = r.text;
+        const hasSwatch = t.includes('.scheme-swatch');
+        const hasGradient = t.includes('linear-gradient(90deg');
+        const hasBorderLeft = /border-left:\s*16px\s+solid/.test(t);
+        const ok3 = hasSwatch && hasGradient && hasBorderLeft;
+        log('CSS v=' + v + ': swatch=' + hasSwatch + ' gradient=' + hasGradient + ' border16=' + hasBorderLeft, ok3 ? 'ok' : 'bad');
+      } catch (e) { bad('fetch CSS v=' + v, e.message); }
+    }
+  })().catch(e => {
+    log('ERROR FATAL: ' + e.message, 'err');
+  });
+})();
+</script>
+</body>
+</html>

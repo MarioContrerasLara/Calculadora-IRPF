@@ -55,6 +55,9 @@ coverage/
 .coverage
 htmlcov/
 
+# Legacy browser test harness (replaced by the Python suite)
+tests/test.html
+
 # Temporary
 temp/
 tmp/

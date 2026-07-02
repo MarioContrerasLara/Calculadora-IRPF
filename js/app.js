@@ -162,11 +162,12 @@ const ESPECIE = {
 // =============================================================
 //  SALARIO MÍNIMO INTERPROFESIONAL 2025
 //  RD 87/2025, de 11 de febrero (BOE 12-02-2025)
-//  1.184 €/mes × 14 pagas = 16.576 €/año
-//  Bruto anual ≤ SMI → retención IRPF = 0 (Art. 81 bis RIRPF)
+// =============================================================
+//  SMI — Salario Mínimo Interprofesional (Art. 81 bis RIRPF)
+//  Bruto anual ≤ SMI → retención IRPF = 0
 // =============================================================
 
-const SMI_ANUAL = 16576;
+const SMI_BY_YEAR = { 2025: 16576, 2026: 17094 };
 
 // =============================================================
 //  REDUCCIÓN POR RENDIMIENTOS DEL TRABAJO (Art. 20 Ley IRPF)
@@ -296,6 +297,16 @@ const fmt = n => {
     return neg + dots + ',' + d;
 };
 const fmtPct = n => fmt(n) + '\xa0%';
+// Short format for overlay: max 12 integer digits (999.999.999.999,99 €)
+const fmtMax = n => {
+    const s = fmt(n);
+    const intPart = s.split(',')[0];
+    if (intPart.replace(/\./g, '').length > 12) {
+        const first12 = intPart.replace(/\./g, '').slice(0, 12);
+        return first12.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',00… €';
+    }
+    return s + ' €';
+};
 const fmtTramo = (d, h) =>
     h === Infinity ? fmt(d) + ' en adelante' : fmt(d) + ' — ' + fmt(h);
 
@@ -304,6 +315,8 @@ const fmtTramo = (d, h) =>
 // =============================================================
 //  RENDER HELPERS
 // =============================================================
+
+function rv(text) { return `<div class="cell-scroll">${text}</div>`; }
 
 function renderBrackets(tramos, tbId, tfId, cuotaNeta) {
     const tb = document.getElementById(tbId);
@@ -316,15 +329,15 @@ function renderBrackets(tramos, tbId, tfId, cuotaNeta) {
         if (t.activo) tr.classList.add('hi');
         tr.innerHTML =
             `<td>${fmtTramo(t.desde, t.hasta)}</td>` +
-            `<td>${fmt(t.base)} €</td>` +
+            `<td>${rv(fmt(t.base) + ' €')}</td>` +
             `<td>${fmtPct(t.tipo)}</td>` +
-            `<td class="text-right">${fmt(t.cuota)} €</td>`;
+            `<td class="text-right">${rv(fmt(t.cuota) + ' €')}</td>`;
         tb.appendChild(tr);
     });
 
     tf.innerHTML =
         `<tr><td colspan="3">Cuota íntegra (tras minorar mínimo personal)</td>` +
-        `<td class="text-right">${fmt(cuotaNeta)} €</td></tr>`;
+        `<td class="text-right">${rv(fmt(cuotaNeta) + ' €')}</td></tr>`;
 }
 
 // =============================================================
@@ -345,9 +358,7 @@ const MONTHLY_VIEW_LABELS = {
     bruto:    { title: 'Salario bruto de cada mes',                        short: 'Bruto' },
     total:    { title: 'Coste total para la empresa (por mes)',            short: 'Total' },
     tax:      { title: 'Impuestos del trabajador (SS + IRPF)',            short: 'Impuestos' },
-    employee: { title: 'Lo que cobras cada mes (neto + deducciones)',     short: 'Trabajador' },
     employer: { title: 'Costes del empleador (por mes)',                  short: 'Empresa' },
-    both:     { title: 'Coste total (trabajador + empresa)',              short: 'Ambos' },
 };
 
 // Stacked-bar segment layout per view. Each row is [key, label, color-var].
@@ -385,40 +396,20 @@ const VIEW_SEGMENTS = {
         ['irpf_est', 'IRPF estatal'],
         ['irpf_aut', 'IRPF autonómico'],
     ],
-    employee: [
-        ['neto',     'Neto'],
-        ['ss',       'SS trabajador'],
-        ['irpf_est', 'IRPF estatal'],
-        ['irpf_aut', 'IRPF autonómico'],
-        ['flex',     'Especie flexible'],
-    ],
     employer: [
-        ['empSS',    'SS empresa'],
-        ['espAd',    'Especie adicional'],
-    ],
-    both: [
-        ['neto',     'Neto'],
-        ['ss',       'SS trabajador'],
-        ['irpf_est', 'IRPF estatal'],
-        ['irpf_aut', 'IRPF autonómico'],
-        ['flex',     'Especie flexible'],
         ['empSS',    'SS empresa'],
         ['espAd',    'Especie adicional'],
     ],
 };
 
 // Chart layout — fixed columns.
-// CHART_W = CHART_BAR_END + (CHART_VAL_COL - _CHART_MAX_W)
-const CHART_VAL_COL = 155;
-const CHART_MONTH_X = CHART_VAL_COL + 28;
-const CHART_BAR_X = CHART_MONTH_X + 44;
+// Month label + bar centered together, values inside bars.
+const CHART_MONTH_X = 55;
+const CHART_BAR_X = CHART_MONTH_X + 50;
 const CHART_BAR_W = 460;
 const CHART_BAR_END = CHART_BAR_X + CHART_BAR_W;
 const CHART_H = 520;
-// Max number the chart is designed for: width of "9.999.999,99 €" ≈ 150px
-const _CHART_MAX_W = 150;
-const _leftPad = CHART_VAL_COL - _CHART_MAX_W;  // 5
-const CHART_W = CHART_BAR_END + _leftPad;         // 676
+const CHART_W = CHART_BAR_END + 45;
 
 function updateLegendForView(viewKey) {
     const items = document.querySelectorAll('#monthlyChartLegend .color-scheme-item');
@@ -481,23 +472,25 @@ function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPag
         months.push({ m, comps, viewTotal, isExtra, isUpdate, hasBonus: mesBonus > 0, salario: salarioMes, bonus: mesBonus });
     }
 
-    const maxValueActual = Math.max(...months.map(x => x.viewTotal), 1);
-    // 5% headroom — just enough so the tallest bar doesn't kiss the chart top
-    const maxValue = maxValueActual * 1.05;
+        const maxValueActual = Math.max(...months.map(x => x.viewTotal), 1);
+        const maxValue = maxValueActual;
 
-    // Fixed viewBox: CHART_W = CHART_BAR_END + _leftPad
-    let W = CHART_W;
+    // Responsive: on narrow screens, keep H fixed (same bar height as desktop)
+    // and scale X coordinates to fit the container width.
+    const _chartEl = document.getElementById('monthlyChart');
+    const _cw = _chartEl ? (_chartEl.clientWidth || CHART_W) : CHART_W;
+    const W = _cw;
     const H = CHART_H;
+    const sx = W / CHART_W;
     const padT = 10, padB = 10;
     const rowH = (H - padT - padB) / 12;
     const barH = rowH * 0.55;
 
-    // Fixed column widths — value column is wide enough for ~99.999.999,99 €
-    const valueColEnd = CHART_VAL_COL;
-    const monthColX   = CHART_MONTH_X;
-    const barAreaX    = CHART_BAR_X;
-    const barAreaEnd  = CHART_BAR_X + CHART_BAR_W;
-    const barAreaW    = CHART_BAR_W;
+    // Column widths (scaled to container)
+    const monthColX   = CHART_MONTH_X * sx;
+    const barAreaX    = CHART_BAR_X * sx;
+    const barAreaEnd  = (CHART_BAR_X + CHART_BAR_W) * sx;
+    const barAreaW    = CHART_BAR_W * sx;
 
     // Update the h3 to reflect the current view
     const titleEl = document.querySelector('.monthly-chart-head h3');
@@ -511,16 +504,10 @@ function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPag
         const rowY = padT + i * rowH;
         const cy   = rowY + rowH / 2;
 
-        // Value (right-aligned, at row center) — shows the view's total
-        const valueText = fmt(mo.viewTotal) + ' €';
-        parts.push(`<text class="bar-value" x="${CHART_VAL_COL / 2}" y="${(cy + 5).toFixed(1)}" text-anchor="middle">${valueText}</text>`);
-
         // Month name (left-aligned, at row center)
         parts.push(`<text class="month-label" x="${monthColX}" y="${(cy + 5).toFixed(1)}" text-anchor="middle">${monthAbbr[mo.m - 1]}</text>`);
 
         // Stacked bar: one <rect> per segment, placed left-to-right.
-        // Total bar length = mo.viewTotal; each segment's width is proportional
-        // to its share of the view's max.
         const by = cy - barH / 2;
         const totalBarW = Math.max(2, (mo.viewTotal / maxValue) * barAreaW);
         const scale = mo.viewTotal > 0 ? totalBarW / mo.viewTotal : 0;
@@ -536,7 +523,6 @@ function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPag
             if (mo.isUpdate) tipParts.push('Salario actualizado');
             if (mo.hasBonus) tipParts.push(`Bonus: +${fmt(mo.bonus)} €`);
             const tip = tipParts.join(' · ');
-            // rounded only on the outermost edges of the whole bar
             const isFirst = segX === barAreaX;
             const isLast  = (xCursor + segW) >= (barAreaX + totalBarW - 0.5);
             const rx = (isFirst || isLast) ? 5 : 0;
@@ -545,9 +531,21 @@ function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPag
             lastSegX = segX; lastSegW = segW;
         });
 
-        // Badges: at the right end of the bar (inside the bar if it reaches
-        // the right edge, otherwise in the empty space to the right of short bars).
-        // Each badge type gets a distinct color matching the legend below.
+        // Value text — centered INSIDE the bar (rendered after bars so it sits on top)
+        const valueText = fmt(mo.viewTotal) + ' €';
+        const barCenterX = barAreaX + totalBarW / 2;
+        const approxTextW = valueText.length * 7.8;
+        const textPad = 16;
+        const bH = barH.toFixed(1);
+        if (approxTextW < totalBarW * 0.9) {
+            parts.push(`<text class="bar-value" x="${barCenterX.toFixed(1)}" y="${(cy + 5).toFixed(1)}" text-anchor="middle" style="fill:#fff;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;pointer-events:none;">${valueText}</text>`);
+        } else {
+            const foW = Math.max(totalBarW - textPad * 2, 0);
+            const foX = barAreaX + textPad;
+            parts.push(`<foreignObject x="${foX.toFixed(1)}" y="${by.toFixed(1)}" width="${foW.toFixed(1)}" height="${bH}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${foW.toFixed(1)}px;height:${bH}px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.4) transparent;display:flex;align-items:center;"><span style="color:#fff;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;">${valueText}</span></div></foreignObject>`);
+        }
+
+        // Badges: at the right end of the bar
         const badgeMap = {
             '+': { fill: '#10b981', label: 'Paga extra' },   // green
             '€': { fill: '#f59e0b', label: 'Bonus' },         // amber
@@ -577,31 +575,6 @@ function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPag
     parts.push('</svg>');
     document.getElementById('monthlyChart').innerHTML = parts.join('');
 
-    // Scrollable HTML overlay for value numbers (foreignObject inside SVG can't scroll)
-    // Skip if SVG is not visible yet (panel hidden) — overlay and viewBox refinement
-    // happen in _rebuildMonthlyChartOverlay when the mensual tab activates.
-    const chartEl = document.getElementById('monthlyChart');
-    const svgEl = chartEl.querySelector('.monthly-chart-svg');
-    const svgW = svgEl.getBoundingClientRect().width;
-    if (svgW > 0) {
-        // Panel is visible — catch content (e.g. badge rects) past CHART_BAR_END.
-        let visRight = 0;
-        svgEl.querySelectorAll('.bar-seg').forEach(r => {
-            try { const b = r.getBBox(); const rgt = b.x + b.width; if (rgt > visRight) visRight = rgt; } catch(e) {}
-        });
-        if (visRight > 0) {
-            const idealW = Math.ceil(Math.max(W, 560, visRight + 20));
-            if (Math.abs(idealW - W) > 1) {
-                W = idealW;
-                svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-                const bgRect = svgEl.querySelector('rect');
-                if (bgRect) bgRect.setAttribute('width', W);
-            }
-        }
-        const svgW2 = svgEl.getBoundingClientRect().width;
-        _buildChartOverlay(chartEl, svgEl, svgW2, months, padT, rowH, W, H, valueColEnd);
-    }
-
     // Indicators (badges in the chart): only show markers that have actual data.
     const indicators = [];
     if (numPagas === 14) {
@@ -625,90 +598,6 @@ function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPag
     // Sync the color-scheme legend with the active view
     updateLegendForView(viewKey);
 }
-
-function _buildChartOverlay(chartEl, svgEl, svgW, months, padT, rowH, W, H, valueColEnd) {
-    // Remove any existing overlay first
-    const old = chartEl.querySelector('.chart-value-overlay');
-    if (old) old.remove();
-    chartEl.style.position = 'relative';
-    const chartRect = chartEl.getBoundingClientRect();
-    const svgRect = svgEl.getBoundingClientRect();
-    const svgH = svgRect.height;
-    const svgOffL = svgRect.left - chartRect.left;
-    const svgOffT = svgRect.top - chartRect.top;
-    const sx = svgW / W;
-    const sy = svgH / H;
-    const colW = Math.round(valueColEnd * sx) + 6;
-    const overlay = document.createElement('div');
-    overlay.className = 'chart-value-overlay';
-    overlay.style.cssText = 'position:absolute;left:' + svgOffL + 'px;top:' + svgOffT + 'px;width:' + colW + 'px;height:' + svgH + 'px;overflow:hidden;';
-    for (let i = 0; i < months.length; i++) {
-        const mo = months[i];
-        const rowY = padT + i * rowH;
-        const rowPx = Math.round(rowY * sy);
-        const rowHPx = Math.max(16, Math.round(rowH * sy));
-        const row = document.createElement('div');
-        row.className = 'chart-value-overlay-row';
-        row.textContent = fmt(mo.viewTotal) + ' €';
-        row.style.cssText = 'position:absolute;left:0;top:' + rowPx + 'px;width:100%;height:' + rowHPx + 'px;overflow-x:auto;scrollbar-width:thin;scrollbar-gutter:stable both-edges;display:flex;justify-content:center;align-items:center;white-space:nowrap;font-size:15px;font-variant-numeric:tabular-nums;line-height:' + rowHPx + 'px;padding:0;box-sizing:border-box;color:var(--text-1);';
-        overlay.appendChild(row);
-    }
-    chartEl.appendChild(overlay);
-    requestAnimationFrame(() => {
-        const rows = overlay.querySelectorAll('.chart-value-overlay-row');
-        rows.forEach(r => { r.scrollLeft = 0; });
-    });
-}
-
-// Called from the mensual tab click handler to rebuild the overlay when panel becomes visible
-window._rebuildMonthlyChartOverlay = function () {
-    const args = _monthlyChartArgs;
-    if (!args) return;
-    const chartEl = document.getElementById('monthlyChart');
-    const svgEl = chartEl && chartEl.querySelector('.monthly-chart-svg');
-    if (!svgEl) return;
-    const svgW = svgEl.getBoundingClientRect().width;
-    if (svgW > 0) {
-        // Re-derive months array from args (same logic as renderMonthlyChart)
-        const viewKey = _monthlyChartView;
-        const { salarioPorMes, bonusPorMes, brutoMensualBase, numPagas, perMonth, mensualEmpSS, mensualEspAd } = args;
-        const months = [];
-        for (let m = 1; m <= 12; m++) {
-            const pm = perMonth[m];
-            const comps = {
-                neto:     pm.totalBrutoMes - pm.ss - pm.irpf_est - pm.irpf_aut - pm.flex,
-                ss:       pm.ss,
-                irpf_est: pm.irpf_est,
-                irpf_aut: pm.irpf_aut,
-                flex:     pm.flex,
-                empSS:    mensualEmpSS || 0,
-                espAd:    mensualEspAd || 0,
-            };
-            const viewTotal = VIEW_SEGMENTS[viewKey].reduce((s, [k]) => s + (comps[k] || 0), 0);
-            months.push({ m: m, comps, viewTotal });
-        }
-        const padT = 10;
-        // Fixed viewBox: CHART_W = CHART_BAR_END + _leftPad
-        let W = CHART_W;
-        const H = CHART_H;
-        // Catch content (e.g. badge rects) past CHART_BAR_END
-        let visRight = 0;
-        svgEl.querySelectorAll('.bar-seg').forEach(r => {
-            try { const b = r.getBBox(); const rgt = b.x + b.width; if (rgt > visRight) visRight = rgt; } catch(e) {}
-        });
-        if (visRight > 0) {
-            const idealW = Math.ceil(Math.max(W, 560, visRight + 20));
-            if (Math.abs(idealW - W) > 1) {
-                W = idealW;
-                svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-                const bgRect = svgEl.querySelector('rect');
-                if (bgRect) bgRect.setAttribute('width', W);
-            }
-        }
-        const rowH = (H - padT - 10) / 12;
-        _buildChartOverlay(chartEl, svgEl, svgEl.getBoundingClientRect().width, months, padT, rowH, W, H, CHART_VAL_COL);
-    }
-};
 
 function renderPie(svgId, legendId, slices, total) {
     const svg = document.getElementById(svgId);
@@ -752,7 +641,7 @@ function renderPie(svgId, legendId, slices, total) {
         const pct = total > 0 ? (s.value / total * 100) : 0;
         return `<div class="pie-leg-item">` +
             `<span class="pie-swatch" style="background:${s.color}"></span>` +
-            `<span class="pie-leg-text">${s.label}: <strong>${fmt(s.value)} €</strong> (${fmt(pct)}%)</span>` +
+            `<span class="pie-leg-text"><span class="pie-leg-head">${s.label}: <strong>${fmt(s.value)} €</strong></span><span class="pie-leg-pct">(${fmt(pct)}%)</span></span>` +
             `</div>`;
     }).join('');
 }
@@ -820,6 +709,26 @@ function getIceLayout() {
         }
     }
     return _iceLayoutCache;
+}
+
+// Linear interpolation along a polyline: given pts = [[x,y],...] sorted by y,
+// return the X coordinate at the given targetY by interpolating between the
+// two bracketing segments.  Used by iceEdge() to find where labels should
+// connect to the iceberg body edge.
+function interp(pts, targetY) {
+    for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, y1] = pts[i];
+        const [x2, y2] = pts[i + 1];
+        if (y1 === y2) {
+            if (targetY === y1) return (x1 + x2) / 2;
+            continue;
+        }
+        if ((y1 <= targetY && targetY <= y2) || (y2 <= targetY && targetY <= y1)) {
+            const t = (targetY - y1) / (y2 - y1);
+            return x1 + t * (x2 - x1);
+        }
+    }
+    return pts[0][0];
 }
 
 function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, espFlexible, costeTotal) {
@@ -980,15 +889,15 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const empEl  = document.getElementById('iceZoneEmployer');
 
     netEl.innerHTML =
-        `<div class="ice-row"><span class="ice-val">€ ${fmt(netoClean)}</span><span class="ice-connector"><span class="ice-connector-dot"></span></span></div>` +
+        `<div class="ice-row"><span class="ice-val">€ ${fmt(netoClean)}</span></div>` +
         `<div class="ice-lbl-text">Pago neto</div>`;
 
     wrkEl.innerHTML =
-        `<div class="ice-row"><span class="ice-val">€ ${fmt(workerTax)}</span><span class="ice-connector"><span class="ice-connector-dot"></span></span></div>` +
+        `<div class="ice-row"><span class="ice-val">€ ${fmt(workerTax)}</span></div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por ti</div>`;
 
     empEl.innerHTML =
-        `<div class="ice-row"><span class="ice-connector"><span class="ice-connector-dot"></span></span><span class="ice-val">€ ${fmt(employerTax)}</span></div>` +
+        `<div class="ice-row"><span class="ice-val">€ ${fmt(employerTax)}</span></div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por tu empleador</div>`;
 
     // Summary cards (no layout needed)
@@ -1047,29 +956,74 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const wrkTargetPx = scenePx(workerMidSvgY);
     const empTargetPx = scenePx(empMidSvgY);
 
-    // Offset by half the row height so the connector line sits at midpoint
-    netEl.style.top = (netTargetPx - rowH / 2) + 'px';
-    wrkEl.style.top = (wrkTargetPx - rowH / 2) + 'px';
-    empEl.style.top = (empTargetPx - rowH / 2) + 'px';
+    // Position labels at their exact zone midpoints — lines always point to the right area
+    const netTop = netTargetPx - rowH / 2;
+    const wrkTop = wrkTargetPx - rowH / 2;
+    let empTop = empTargetPx - rowH / 2;
 
-    // Set row widths so dots touch the iceberg edge (flex connector fills remaining space)
-    const [netLx]    = iceEdge(netMidSvgY);
-    const [wrkLx]    = iceEdge(workerMidSvgY);
-    const [, empRx]  = iceEdge(empMidSvgY);
+    netEl.style.top = netTop + 'px';
+    wrkEl.style.top = wrkTop + 'px';
+    empEl.style.top = empTop + 'px';
 
-    const netIcePx = svgRelL + netLx * sx;
-    const wrkIcePx = svgRelL + wrkLx * sx;
-    const empIcePx = svgRelL + empRx * sx;
+    // ── SVG connector lines: horizontal from label to center of iceberg ──
+    const [netLx, netRx]  = iceEdge(netMidSvgY);
+    const [wrkLx, wrkRx]  = iceEdge(workerMidSvgY);
+    const [empLx, empRx]  = iceEdge(empMidSvgY);
 
-    // Left labels: row stretches from label left edge to iceberg left edge
-    const netLabelLeft = sceneW * 0.05;
-    const wrkLabelLeft = sceneW * 0.04;
-    netEl.querySelector('.ice-row').style.width = Math.max(60, netIcePx - netLabelLeft) + 'px';
-    wrkEl.querySelector('.ice-row').style.width = Math.max(60, wrkIcePx - wrkLabelLeft) + 'px';
+    // Single center X for all three dots (vertically aligned)
+    const iceCenterX = svgRelL + 150 * sx;
 
-    // Right label: row stretches from iceberg right edge to label right edge
-    const empLabelRight = sceneW * 0.95;
-    empEl.querySelector('.ice-row').style.width = Math.max(60, empLabelRight - empIcePx) + 'px';
+    // Line Y = zone midpoint Y (labels are at zone midpoints, so lines point to correct area)
+    const netLineY = svgRelT + netMidSvgY * sy;
+    const wrkLineY = svgRelT + workerMidSvgY * sy;
+    const empLineY = svgRelT + empMidSvgY * sy;
+
+    // Label right edge in scene coords
+    const netLabelRight  = netEl.offsetLeft + netEl.offsetWidth;
+    const wrkLabelRight  = wrkEl.offsetLeft + wrkEl.offsetWidth;
+    const empLabelRight  = empEl.offsetLeft + empEl.offsetWidth;
+
+    // Resolve CSS variables for SVG attributes (SVG attributes don't support var())
+    const cs = getComputedStyle(document.documentElement);
+    const netColor = cs.getPropertyValue('--ice-net-text').trim() || '#6ee7b7';
+    const connColor = cs.getPropertyValue('--ice-connector').trim() || '#fbbf24';
+
+    // Build SVG connectors — horizontal lines from label edge to iceberg center
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const cSvg = document.getElementById('iceConnectorsSvg');
+    if (cSvg) {
+        cSvg.setAttribute('viewBox', `0 0 ${sceneW} ${sceneH}`);
+        const defs = cSvg.querySelector('defs');
+        cSvg.innerHTML = '';
+        if (defs) cSvg.appendChild(defs);
+
+        const connectors = [
+            { x1: netLabelRight, y1: netLineY, x2: iceCenterX, y2: netLineY, color: netColor },
+            { x1: wrkLabelRight, y1: wrkLineY, x2: iceCenterX, y2: wrkLineY, color: connColor },
+            { x1: empLabelRight,  y1: empLineY, x2: iceCenterX, y2: empLineY, color: connColor },
+        ];
+
+        connectors.forEach(({ x1, y1, x2, y2, color }) => {
+            const line = document.createElementNS(svgNS, 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', '1.5');
+            line.setAttribute('stroke-dasharray', '4 3');
+            line.setAttribute('filter', 'url(#glow)');
+            cSvg.appendChild(line);
+
+            const dot = document.createElementNS(svgNS, 'circle');
+            dot.setAttribute('cx', x2);
+            dot.setAttribute('cy', y2);
+            dot.setAttribute('r', '3.5');
+            dot.setAttribute('fill', color);
+            dot.setAttribute('filter', 'url(#glow)');
+            cSvg.appendChild(dot);
+        });
+    }
 }
 
 // Re-run renderIceberg with the last known values. Called when the user
@@ -1542,19 +1496,18 @@ function calcular(scroll = false) {
     //  1. SEGURIDAD SOCIAL — TRABAJADOR
     // ───────────────────────────────────────────
 
-    const baseMin = BASES.minByGroup[grupo] || BASES.minByGroup[4];
     const baseMax = BASES.max;
 
     // Per-month SS base (adjusted salaries, bonuses may hit a higher capped base)
     let totalSSbaseAnual = 0;
     for (let m = 1; m <= 12; m++) {
         const brutoMes = salarioPorMes[m] + (bonusPorMes[m] || 0);
-        const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
+        const baseMes = Math.min(brutoMes, baseMax);
         totalSSbaseAnual += baseMes;
     }
     // Display base (weighted average) and representative base for ordinary months
     const brutoMensualBase = (bruto + customDinAnual) / 12;
-    const baseSSmensualSinBonus = Math.min(Math.max(brutoMensualBase, baseMin), baseMax);
+    const baseSSmensualSinBonus = Math.min(brutoMensualBase, baseMax);
     const baseSSmensual = totalSSbaseAnual / 12;
 
     const desempleoW = SS_DESEMPLEO_WORKER[contrato];
@@ -1607,7 +1560,8 @@ function calcular(scroll = false) {
     let cuotaIRPF = cuotaEstatal + cuotaAutonomica;
 
     // SMI exento de retención (Art. 81 bis RIRPF)
-    if (brutoConBonus <= SMI_ANUAL) {
+    const smiAnual = SMI_BY_YEAR[anio] || SMI_BY_YEAR[2026];
+    if (brutoConBonus <= smiAnual + 0.01) {
         cuotaEstatal = 0;
         cuotaAutonomica = 0;
         cuotaIRPF = 0;
@@ -1618,7 +1572,7 @@ function calcular(scroll = false) {
     // ───────────────────────────────────────────
 
     let ahorroFlexible = 0;
-    if (exentaFlexible > 0 && brutoConBonus > SMI_ANUAL) {
+    if (exentaFlexible > 0 && brutoConBonus > smiAnual + 0.01) {
         // Recalculate IRPF as if no flexible exemption existed
         const rendIntSinFlex = brutoConBonus + gravadaAdicional;
         const rendNetoSinFlex = Math.max(rendIntSinFlex - gastosDeducibles, 0);
@@ -1691,13 +1645,13 @@ function calcular(scroll = false) {
         const rowCls = shared ? 'ss-shared' : (c.tipoW > 0 ? 'ss-worker-only' : 'ss-employer-only');
         return `<tr class="${rowCls}">` +
             `<td>${c.nombre}</td>` +
-            `<td>${fmt(baseSSmensual)} €</td>` +
+            `<td>${rv(fmt(baseSSmensual) + ' €')}</td>` +
             `<td>${c.tipoW ? fmtPct(c.tipoW) : '—'}</td>` +
-            `<td class="text-right">${c.tipoW ? fmt(anualW) + ' €' : '—'}</td>` +
+            `<td class="text-right">${c.tipoW ? rv(fmt(anualW) + ' €') : '—'}</td>` +
             `<td>${c.tipoE ? fmtPct(c.tipoE) : '—'}</td>` +
-            `<td class="text-right">${c.tipoE ? fmt(anualE) + ' €' : '—'}</td>` +
+            `<td class="text-right">${c.tipoE ? rv(fmt(anualE) + ' €') : '—'}</td>` +
             `<td>${fmtPct(tipoComb)}</td>` +
-            `<td class="text-right">${fmt(anualComb)} €</td>` +
+            `<td class="text-right">${rv(fmt(anualComb) + ' €')}</td>` +
             `</tr>`;
     }).join('');
     if (solidaridad.tramos.length > 0) {
@@ -1706,11 +1660,11 @@ function calcular(scroll = false) {
             `<td>${t.label} <small class="solidarity-note">(base anual: ${fmt(t.base)} €)</small></td>` +
             `<td>—</td>` +
             `<td>${fmtPct(t.tipoW)}</td>` +
-            `<td class="text-right">${fmt(t.cuotaWorker)} €</td>` +
+            `<td class="text-right">${rv(fmt(t.cuotaWorker) + ' €')}</td>` +
             `<td>${fmtPct(t.tipoE)}</td>` +
-            `<td class="text-right">${fmt(t.cuotaEmployer)} €</td>` +
+            `<td class="text-right">${rv(fmt(t.cuotaEmployer) + ' €')}</td>` +
             `<td>${fmtPct(t.tipoTotal)}</td>` +
-            `<td class="text-right">${fmt(t.cuotaWorker + t.cuotaEmployer)} €</td>` +
+            `<td class="text-right">${rv(fmt(t.cuotaWorker + t.cuotaEmployer) + ' €')}</td>` +
             `</tr>`
         ).join('');
         // Subtotal row for Cuota de Solidaridad
@@ -1724,11 +1678,11 @@ function calcular(scroll = false) {
             `<td><strong>Subtotal C. Solidaridad</strong></td>` +
             `<td>—</td>` +
             `<td>${fmtPct(solTipoW)}</td>` +
-            `<td class="text-right"><strong>${fmt(solSubW)} €</strong></td>` +
+            `<td class="text-right"><strong>${rv(fmt(solSubW) + ' €')}</strong></td>` +
             `<td>${fmtPct(solTipoE)}</td>` +
-            `<td class="text-right"><strong>${fmt(solSubE)} €</strong></td>` +
+            `<td class="text-right"><strong>${rv(fmt(solSubE) + ' €')}</strong></td>` +
             `<td>${fmtPct(solTipoTotal)}</td>` +
-            `<td class="text-right"><strong>${fmt(solSubW + solSubE)} €</strong></td>` +
+            `<td class="text-right"><strong>${rv(fmt(solSubW + solSubE) + ' €')}</strong></td>` +
             `</tr>`;
     }
     const totalCombAnual = totalSSanual + totalEmpAnual;
@@ -1737,10 +1691,52 @@ function calcular(scroll = false) {
     const totalCombTipo = totalWorkerTipo + totalEmpTipo;
     const hasSolidaridad = solidaridad.tramos.length > 0;
     document.getElementById('legSolidaridad').style.display = hasSolidaridad ? '' : 'none';
+    const hasShared = ssConceptos.some(c => c.tipoW > 0 && c.tipoE > 0);
+    const hasWorkerOnly = ssConceptos.some(c => c.tipoW > 0 && c.tipoE === 0);
+    const hasEmployerOnly = ssConceptos.some(c => c.tipoW === 0 && c.tipoE > 0);
+    document.querySelector('[data-panel="ss"] .meta .ss-leg-item:nth-child(1)').style.display = hasShared ? '' : 'none';
+    document.querySelector('[data-panel="ss"] .meta .ss-leg-item:nth-child(2)').style.display = hasWorkerOnly ? '' : 'none';
+    document.querySelector('[data-panel="ss"] .meta .ss-leg-item:nth-child(3)').style.display = hasEmployerOnly ? '' : 'none';
     tfSS.innerHTML = `<tr><td colspan="2">Total${hasSolidaridad ? ' <small class="solidarity-note">(incl. C. Solidaridad)</small>' : ''}</td>` +
-        `<td>${fmtPct(totalWorkerTipo)}</td><td class="text-right">${fmt(totalSSanual)} €</td>` +
-        `<td>${fmtPct(totalEmpTipo)}</td><td class="text-right">${fmt(totalEmpAnual)} €</td>` +
-        `<td>${fmtPct(totalCombTipo)}</td><td class="text-right">${fmt(totalCombAnual)} €</td></tr>`;
+        `<td>${fmtPct(totalWorkerTipo)}</td><td class="text-right">${rv(fmt(totalSSanual) + ' €')}</td>` +
+        `<td>${fmtPct(totalEmpTipo)}</td><td class="text-right">${rv(fmt(totalEmpAnual) + ' €')}</td>` +
+        `<td>${fmtPct(totalCombTipo)}</td><td class="text-right">${rv(fmt(totalCombAnual) + ' €')}</td></tr>`;
+
+    // --- Mobile split tables ---
+    const mobileRows = ssConceptos.map(c => {
+        const anualW = baseSSmensual * (c.tipoW / 100) * 12;
+        const anualE = baseSSmensual * (c.tipoE / 100) * 12;
+        const tipoComb = c.tipoW + c.tipoE;
+        const anualComb = anualW + anualE;
+        return { nombre: c.nombre, tipoW: c.tipoW, anualW, tipoE: c.tipoE, anualE, tipoComb, anualComb };
+    });
+    const mobTbW = document.getElementById('tbSSw');
+    const mobTbE = document.getElementById('tbSSe');
+    const mobTbC = document.getElementById('tbSSc');
+    if (mobTbW) {
+        document.getElementById('ssMobileBaseW').textContent = `Base mensual: ${fmt(baseSSmensual)} €`;
+        document.getElementById('ssMobileBaseE').textContent = `Base mensual: ${fmt(baseSSmensual)} €`;
+        document.getElementById('ssMobileBaseC').textContent = `Base mensual: ${fmt(baseSSmensual)} €`;
+        mobTbW.innerHTML = mobileRows.map(r =>
+            `<tr><td>${r.nombre}</td><td>${r.tipoW ? fmtPct(r.tipoW) : '—'}</td><td class="text-right">${r.tipoW ? rv(fmt(r.anualW) + ' €') : '—'}</td></tr>`
+        ).join('') +
+        (hasSolidaridad ? `<tr class="ss-solidarity"><td><strong>Subtotal C. Solidaridad</strong></td><td>${fmtPct(solidaridad.tramos.reduce((s, t) => s + t.tipoW, 0))}</td><td class="text-right"><strong>${rv(fmt(solidaridad.worker) + ' €')}</strong></td></tr>` : '') +
+        `<tr><td><strong>Total</strong></td><td><strong>${fmtPct(totalWorkerTipo)}</strong></td><td class="text-right"><strong>${rv(fmt(totalSSanual) + ' €')}</strong></td></tr>`;
+    }
+    if (mobTbE) {
+        mobTbE.innerHTML = mobileRows.map(r =>
+            `<tr><td>${r.nombre}</td><td>${r.tipoE ? fmtPct(r.tipoE) : '—'}</td><td class="text-right">${r.tipoE ? rv(fmt(r.anualE) + ' €') : '—'}</td></tr>`
+        ).join('') +
+        (hasSolidaridad ? `<tr class="ss-solidarity"><td><strong>Subtotal C. Solidaridad</strong></td><td>${fmtPct(solidaridad.tramos.reduce((s, t) => s + t.tipoE, 0))}</td><td class="text-right"><strong>${rv(fmt(solidaridad.employer) + ' €')}</strong></td></tr>` : '') +
+        `<tr><td><strong>Total</strong></td><td><strong>${fmtPct(totalEmpTipo)}</strong></td><td class="text-right"><strong>${rv(fmt(totalEmpAnual) + ' €')}</strong></td></tr>`;
+    }
+    if (mobTbC) {
+        mobTbC.innerHTML = mobileRows.map(r =>
+            `<tr><td>${r.nombre}</td><td>${fmtPct(r.tipoComb)}</td><td class="text-right">${rv(fmt(r.anualComb) + ' €')}</td></tr>`
+        ).join('') +
+        (hasSolidaridad ? `<tr class="ss-solidarity"><td><strong>Subtotal C. Solidaridad</strong></td><td>${fmtPct(solidaridad.tramos.reduce((s, t) => s + t.tipoTotal, 0))}</td><td class="text-right"><strong>${rv(fmt(solidaridad.worker + solidaridad.employer) + ' €')}</strong></td></tr>` : '') +
+        `<tr><td><strong>Total</strong></td><td><strong>${fmtPct(totalCombTipo)}</strong></td><td class="text-right"><strong>${rv(fmt(totalCombAnual) + ' €')}</strong></td></tr>`;
+    }
 
     // --- 2. IRPF flow ---
     const flowRows = [
@@ -1826,7 +1822,7 @@ function calcular(scroll = false) {
                 td2.style.color = 'var(--accent)';
             }
             td1.textContent = c;
-            td2.textContent = fmt(v) + ' €';
+            td2.innerHTML = rv(fmt(v) + ' €');
             tr.appendChild(td1);
             tr.appendChild(td2);
         }
@@ -1841,7 +1837,7 @@ function calcular(scroll = false) {
     for (let i = 0; i < rows; i++) {
         const e = detallesEst[i];
         const a = detallesAut[i];
-        minHtml += `<tr><td>${e ? e.c : ''}</td><td class="text-right">${e ? fmt(e.v) + ' €' : ''}</td><td class="text-right">${a ? fmt(a.v) + ' €' : ''}</td></tr>`;
+        minHtml += `<tr><td>${e ? e.c : ''}</td><td class="text-right">${e ? rv(fmt(e.v) + ' €') : ''}</td><td class="text-right">${a ? rv(fmt(a.v) + ' €') : ''}</td></tr>`;
     }
     document.getElementById('tbMin').innerHTML = minHtml;
     document.getElementById('tfMinEst').textContent = fmt(minimoEst) + ' €';
@@ -1855,10 +1851,10 @@ function calcular(scroll = false) {
     const tipoEfEst = bruto > 0 ? (cuotaEstatal / bruto * 100) : 0;
     const tipoEfAut = bruto > 0 ? (cuotaAutonomica / bruto * 100) : 0;
     document.getElementById('tbIrpfResumen').innerHTML =
-        `<tr><td>Cuota estatal</td><td class="text-right">${fmt(cuotaEstatal)} €</td><td class="text-right">${fmtPct(tipoEfEst)}</td></tr>` +
-        `<tr><td>Cuota autonómica (Andalucía)</td><td class="text-right">${fmt(cuotaAutonomica)} €</td><td class="text-right">${fmtPct(tipoEfAut)}</td></tr>`;
+        `<tr><td>Cuota estatal</td><td class="text-right">${rv(fmt(cuotaEstatal) + ' €')}</td><td class="text-right">${rv(fmtPct(tipoEfEst))}</td></tr>` +
+        `<tr><td>Cuota autonómica (Andalucía)</td><td class="text-right">${rv(fmt(cuotaAutonomica) + ' €')}</td><td class="text-right">${rv(fmtPct(tipoEfAut))}</td></tr>`;
     document.getElementById('tfIrpfResumen').innerHTML =
-        `<tr><td>Total IRPF</td><td class="text-right">${fmt(cuotaIRPF)} €</td><td class="text-right">${fmtPct(tipoIRPF)}</td></tr>`;
+        `<tr><td>Total IRPF</td><td class="text-right">${rv(fmt(cuotaIRPF) + ' €')}</td><td class="text-right">${rv(fmtPct(tipoIRPF))}</td></tr>`;
 
     // --- Pre-compute monthly values (needed by hero cards and monthly view) ---
     const brutoPorPaga = (bruto + customDinAnual) / numPagas;
@@ -1985,7 +1981,7 @@ function calcular(scroll = false) {
         const brutoPorPagaMes = (salarioMes * 12) / numPagas;
         const pagoMes = isExtra ? brutoPorPagaMes * 2 : brutoPorPagaMes;
         const totalBrutoMes = pagoMes + mesBonus;
-        const baseMesSS = Math.min(Math.max(salarioMes + mesBonus, baseMin), baseMax);
+        const baseMesSS = Math.min(salarioMes + mesBonus, baseMax);
         perMonth[m] = {
             ss:       isExtra ? 0 : conceptosSS.reduce((s, c) => s + baseMesSS * (c.tipo / 100), 0),
             irpf_est: isExtra ? 0 : totalBrutoMes * tipoEst,
@@ -2111,17 +2107,6 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
             const active = b.dataset.view === view;
             b.classList.toggle('is-active', active);
             b.setAttribute('aria-selected', active ? 'true' : 'false');
-            if (active) {
-                b.style.background = 'linear-gradient(135deg,#10b981,#059669)';
-                b.style.color = '#fff';
-                b.style.border = '1px solid #10b981';
-                b.style.boxShadow = '0 2px 8px rgba(16,185,129,0.35)';
-            } else {
-                b.style.background = 'var(--bg-subtle)';
-                b.style.color = 'var(--text-1)';
-                b.style.border = '1px solid var(--border)';
-                b.style.boxShadow = 'none';
-            }
         });
         updateLegendForView(view);
         if (_monthlyChartArgs) renderMonthlyChart(
@@ -2131,4 +2116,14 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
             _monthlyChartArgs.mensualEmpSS, _monthlyChartArgs.mensualEspAd
         );
     });
+
+    // Expose re-render so ui.js can trigger it on tab switch
+    window._rerenderMonthlyChart = function() {
+        if (_monthlyChartArgs) renderMonthlyChart(
+            _monthlyChartArgs.salarioPorMes, _monthlyChartArgs.bonusPorMes,
+            _monthlyChartArgs.brutoMensualBase, _monthlyChartArgs.numPagas,
+            _monthlyChartArgs.perMonth,
+            _monthlyChartArgs.mensualEmpSS, _monthlyChartArgs.mensualEspAd
+        );
+    };
 })();

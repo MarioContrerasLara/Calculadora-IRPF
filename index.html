@@ -6,13 +6,13 @@
     <meta name="description" content="Calculadora integral del IRPF y Seguridad Social para trabajadores en régimen general de Andalucía. Cálculo oficial 2025-2026.">
     <title>€ Calculadora Salario Neto — Andalucía</title>
 
-    <script src="js/theme-bootstrap.js?v=170"></script>
+    <script src="js/theme-bootstrap.js?v=174"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/styles.css?v=170">
+    <link rel="stylesheet" href="css/styles.css?v=214">
 </head>
 <body>
 
@@ -450,29 +450,31 @@
         <div class="results-tabs" role="tablist" aria-label="Desglose">
             <button class="results-tab active" data-tab="ss" role="tab" aria-selected="true">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"></path>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                 </svg>
                 <span>Seguridad Social</span>
             </button>
             <button class="results-tab" data-tab="irpf" role="tab" aria-selected="false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M9 11H1l8-8 8 8h-8m0 0v12M9 11h14"></path>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="9" y1="13" x2="15" y2="13"></line>
+                    <line x1="9" y1="17" x2="15" y2="17"></line>
                 </svg>
                 <span>IRPF</span>
             </button>
             <button class="results-tab" data-tab="mensual" role="tab" aria-selected="false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                    <rect x="3" y="12" width="4" height="9" rx="1"></rect>
+                    <rect x="10" y="7" width="4" height="14" rx="1"></rect>
+                    <rect x="17" y="3" width="4" height="18" rx="1"></rect>
                 </svg>
                 <span>Mensual</span>
             </button>
             <button class="results-tab" data-tab="distribucion" role="tab" aria-selected="false">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 2a10 10 0 0 1 0 20"></path>
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                 </svg>
                 <span>Distribución</span>
             </button>
@@ -513,6 +515,24 @@
                         <tfoot id="tfSS"></tfoot>
                     </table>
                 </div>
+                <!-- Mobile: 3 split tables -->
+                <div class="ss-mobile-tables">
+                    <div class="tbl-scroll">
+                        <h4 class="ss-mobile-title"><span class="ss-leg-dot" style="background: var(--info)"></span> Trabajador</h4>
+                        <div class="ss-mobile-base" id="ssMobileBaseW"></div>
+                        <table class="tbl-ss-mobile"><thead><tr><th>Concepto</th><th>Tipo %</th><th class="text-right">Cuota anual</th></tr></thead><tbody id="tbSSw"></tbody><tfoot id="tfSSw"></tfoot></table>
+                    </div>
+                    <div class="tbl-scroll">
+                        <h4 class="ss-mobile-title"><span class="ss-leg-dot" style="background: var(--chart-emp)"></span> Empleador</h4>
+                        <div class="ss-mobile-base" id="ssMobileBaseE"></div>
+                        <table class="tbl-ss-mobile"><thead><tr><th>Concepto</th><th>Tipo %</th><th class="text-right">Cuota anual</th></tr></thead><tbody id="tbSSe"></tbody><tfoot id="tfSSe"></tfoot></table>
+                    </div>
+                    <div class="tbl-scroll">
+                        <h4 class="ss-mobile-title"><span class="ss-leg-dot" style="background: var(--accent)"></span> Combinado</h4>
+                        <div class="ss-mobile-base" id="ssMobileBaseC"></div>
+                        <table class="tbl-ss-mobile"><thead><tr><th>Concepto</th><th>Tipo %</th><th class="text-right">Cuota anual</th></tr></thead><tbody id="tbSSc"></tbody><tfoot id="tfSSc"></tfoot></table>
+                    </div>
+                </div>
             </section>
         </div>
 
@@ -541,8 +561,8 @@
                         <thead>
                             <tr>
                                 <th>Concepto</th>
-                                <th class="text-right">Estatal (€)</th>
-                                <th class="text-right">Autonómico (€)</th>
+                                <th class="text-right">Estatal</th>
+                                <th class="text-right">Autonómico</th>
                             </tr>
                         </thead>
                         <tbody id="tbMin"></tbody>
@@ -630,14 +650,12 @@
             <section class="chart-wrap monthly-chart-wrap">
                 <div class="monthly-chart-head">
                     <h3>Lo que cobras cada mes (neto) <span style="display:inline-block;vertical-align:middle;width:12px;height:12px;border-radius:2px;background:#10b981;margin-left:6px"></span></h3>
-                    <div class="view-toggle-group" id="monthlyViewToggle" role="tablist" aria-label="Métrica del gráfico mensual" style="display:inline-flex;gap:6px;background:var(--bg-elevated);padding:5px;border-radius:10px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                        <button type="button" class="view-toggle-btn is-active" data-view="neto" role="tab" aria-selected="true" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:1px solid #10b981;box-shadow:0 2px 8px rgba(16,185,129,0.35);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Neto</button>
-                        <button type="button" class="view-toggle-btn" data-view="bruto" role="tab" aria-selected="false" style="background:var(--bg-subtle);color:var(--text-1);border:1px solid var(--border);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Bruto</button>
-                        <button type="button" class="view-toggle-btn" data-view="total" role="tab" aria-selected="false" style="background:var(--bg-subtle);color:var(--text-1);border:1px solid var(--border);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Total</button>
-                        <button type="button" class="view-toggle-btn" data-view="tax" role="tab" aria-selected="false" style="background:var(--bg-subtle);color:var(--text-1);border:1px solid var(--border);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Impuestos</button>
-                        <button type="button" class="view-toggle-btn" data-view="employee" role="tab" aria-selected="false" style="background:var(--bg-subtle);color:var(--text-1);border:1px solid var(--border);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Trabajador</button>
-                        <button type="button" class="view-toggle-btn" data-view="employer" role="tab" aria-selected="false" style="background:var(--bg-subtle);color:var(--text-1);border:1px solid var(--border);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Empresa</button>
-                        <button type="button" class="view-toggle-btn" data-view="both" role="tab" aria-selected="false" style="background:var(--bg-subtle);color:var(--text-1);border:1px solid var(--border);font-size:13px;font-weight:600;padding:8px 14px;border-radius:7px;cursor:pointer;transition:all 0.2s ease;">Ambos</button>
+                    <div class="view-toggle-group" id="monthlyViewToggle" role="tablist" aria-label="Métrica del gráfico mensual">
+                        <button type="button" class="view-toggle-btn is-active" data-view="neto" role="tab" aria-selected="true">Neto</button>
+                        <button type="button" class="view-toggle-btn" data-view="bruto" role="tab" aria-selected="false">Bruto</button>
+                        <button type="button" class="view-toggle-btn" data-view="total" role="tab" aria-selected="false">Total</button>
+                        <button type="button" class="view-toggle-btn" data-view="tax" role="tab" aria-selected="false">Impuestos</button>
+                        <button type="button" class="view-toggle-btn" data-view="employer" role="tab" aria-selected="false">Empresa</button>
                     </div>
                 </div>
                 <div class="monthly-chart" id="monthlyChart" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;"></div>
@@ -775,6 +793,17 @@
                                 <path id="iceWaterlineRipple2" d="M 0,178 Q 22,174 44,178 T 88,178 T 132,178 T 176,178 T 220,178 T 264,178 T 300,178" opacity="0.6"/>
                             </g>
                         </svg>
+                        <svg class="ice-connectors-svg" id="iceConnectorsSvg">
+                            <defs>
+                                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                        </svg>
                         <div class="ice-label ice-label-net" id="iceZoneNet"></div>
                         <div class="ice-label ice-label-employee" id="iceZoneEmployee"></div>
                         <div class="ice-label ice-label-employer" id="iceZoneEmployer"></div>
@@ -804,12 +833,11 @@
         <span class="disclaimer">Herramienta orientativa</span>
         No sustituye al asesoramiento profesional. Cálculo ejecutado íntegramente en tu navegador.
     </div>
-    <div class="build-tag" id="buildTag" data-stage="init">build v111 · loading…</div>
 </footer>
 
-<script src="js/tarifa-at.js?v=170"></script>
-<script src="js/app.js?v=170"></script>
-<script src="js/ui.js?v=170"></script>
-<script src="js/diag.js?v=170"></script>
+<script src="js/tarifa-at.js?v=174"></script>
+<script src="js/app.js?v=246"></script>
+<script src="js/ui.js?v=178"></script>
+<script src="js/diag.js?v=174"></script>
 </body>
 </html>

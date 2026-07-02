@@ -33,7 +33,21 @@ const SECURITY_HEADERS = {
     'X-Content-Type-Options':    'nosniff',
     'X-Frame-Options':           'DENY',
     'Referrer-Policy':           'strict-origin-when-cross-origin',
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+    'Content-Security-Policy':   "default-src 'self'; " +
+                                 "script-src 'self'; " +
+                                 "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " +
+                                 "font-src 'self' https://fonts.gstatic.com; " +
+                                 "img-src 'self' data:; " +
+                                 "connect-src 'self'; " +
+                                 "worker-src 'none'; " +
+                                 "base-uri 'none'; " +
+                                 "form-action 'none'; " +
+                                 "frame-ancestors 'none'; " +
+                                 "object-src 'none'",
+    'Permissions-Policy':        'camera=(), microphone=(), geolocation=(), payment=(), usb=(), ' +
+                                 'accelerometer=(), gyroscope=(), magnetometer=(), midi=(), ' +
+                                 'autoplay=(), encrypted-media=(), interest-cohort=()',
 };
 
 function handleRequest(req, res) {
@@ -81,7 +95,7 @@ function serveFile(filePath, res) {
             res.end('Internal Server Error');
             return;
         }
-        const cacheHeader = ['.css', '.js'].includes(ext) ? { 'Cache-Control': 'no-cache' } : {};
+        const cacheHeader = ['.html', '.css', '.js'].includes(ext) || ext === '' ? { 'Cache-Control': 'no-cache, no-store, must-revalidate' } : {};
         res.writeHead(200, { ...SECURITY_HEADERS, ...cacheHeader, 'Content-Type': contentType });
         res.end(data);
     });
@@ -89,6 +103,12 @@ function serveFile(filePath, res) {
 
 const key = fs.readFileSync(SSL_KEY);
 const cert = fs.readFileSync(SSL_CERT);
-https.createServer({ key, cert }, handleRequest).listen(HTTPS_PORT, () => {
+https.createServer({
+    key,
+    cert,
+    // TLS 1.3 only — refuse any client that negotiates TLS 1.2 or below.
+    minVersion: 'TLSv1.3',
+    maxVersion: 'TLSv1.3',
+}, handleRequest).listen(HTTPS_PORT, () => {
     console.log(`HTTPS server running on https://0.0.0.0:${HTTPS_PORT}`);
 });
