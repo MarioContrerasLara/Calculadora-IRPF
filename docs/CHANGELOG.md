@@ -4,6 +4,39 @@ All notable changes to this project are documented here.
 
 ---
 
+## [1.0.1] — 5 April 2026
+
+### ✨ New Features
+
+#### Salary Adjustment (Actualización Salarial)
+- ✅ Support multiple salary levels within a single year
+- ✅ Automatically recalculate SS contributions with adjusted salaries
+- ✅ Properly calculate IRPF based on total annual income
+- ✅ Account for salary changes in monthly breakdown views
+- ✅ Work seamlessly with bonuses and benefits in especie
+
+### 🔧 Improvements
+
+- ✅ Date-based salary adjustments (day/month precision)
+- ✅ Monthly/annual mode toggle for transport & restaurant tickets
+- ✅ Server configuration for HTTPS
+- ✅ Systemd service file
+
+### 🧪 Testing
+
+- ✅ 22 salary update tests added (`test_actualizacion_salarial.py`)
+- ✅ Comprehensive coverage of salary adjustment scenarios
+
+### 📚 Documentation
+
+- ✅ `docs/ACTUALIZACION_SALARIAL.md` — Feature overview
+- ✅ `docs/guides/FEATURE_ACTUALIZACION_SALARIAL.md` — Implementation details
+- ✅ `docs/guides/TESTING_CHECKLIST.md` — Test checklist
+- ✅ `docs/guides/CI_CD_WORKFLOW.md` — CI/CD documentation
+- ✅ `docs/guides/DEPLOYMENT_GUIDE.md` — Deployment guide
+
+---
+
 ## [1.0.0] — 5 April 2026
 
 ### 🎉 First Release
@@ -240,6 +273,7 @@ Free for personal, commercial, and educational use.
 ## Version History at a Glance
 
 ```
+2026-04-05 v1.0.1   📈 Salary adjustment feature
 2026-04-05 v1.0.0   🎉 First release (1344 tests, full documentation)
 ```
 
