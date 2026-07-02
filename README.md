@@ -2,7 +2,7 @@
 
 [![Tests Passing](https://img.shields.io/badge/tests%20passing-1344%2F1344-brightgreen.svg)](./docs/TESTING.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-green.svg)](CHANGELOG.md)
+[![Version: 1.0.1](https://img.shields.io/badge/version-1.0.1-green.svg)](CHANGELOG.md)
 
 Una **calculadora integral del IRPF + Seguridad Social** para trabajadores del régimen general en **Andalucía (2025–2026)**, con soporte para años futuros hasta 2045.
 
@@ -54,7 +54,7 @@ python3 -m http.server 8000
 | [API_REFERENCE.md](docs/API_REFERENCE.md) | Referencia de todas las funciones JavaScript y Python |
 | [TESTING.md](docs/TESTING.md) | Suite de tests, estrategia de verificación, cómo añadir tests |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Desplegar en producción, AWS, CI/CD |
-| [CHANGELOG.md](docs/CHANGELOG.md) | Historial de cambios v1.0.0 |
+| [CHANGELOG.md](docs/CHANGELOG.md) | Historial de cambios v1.0.1 |
 
 ## 🔧 Stack Técnico
 

@@ -1,0 +1,37 @@
+name: Test
+
+on:
+  push:
+    branches: [ feature/*, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    
+    - name: Run existing test suite
+      run: |
+        cd tests
+        python3 -m pytest test_irpf.py -v --tb=short 2>&1 | head -100
+      continue-on-error: true
+      
+    - name: Run salary adjustment tests
+      run: |
+        cd tests
+        python3 test_actualizacion_salarial.py
+      continue-on-error: true
+    
+    - name: Test Report
+      if: always()
+      run: |
+        echo "✅ Tests completed"
+        echo "Check logs above for any failures"

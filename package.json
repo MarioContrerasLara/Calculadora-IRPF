@@ -1,6 +1,6 @@
 {
   "name": "calculadora-irpf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "IRPF + Seguridad Social Calculator for Spanish workers (Andalucía region)",
   "main": "server.js",
   "scripts": {
