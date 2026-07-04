@@ -42,6 +42,39 @@ All notable changes to this project are documented here.
 
 ---
 
+## [1.0.1] — 5 April 2026
+
+### ✨ New Features
+
+#### Salary Adjustment (Actualización Salarial)
+- ✅ Support multiple salary levels within a single year
+- ✅ Automatically recalculate SS contributions with adjusted salaries
+- ✅ Properly calculate IRPF based on total annual income
+- ✅ Account for salary changes in monthly breakdown views
+- ✅ Work seamlessly with bonuses and benefits in especie
+
+### 🔧 Improvements
+
+- ✅ Date-based salary adjustments (day/month precision)
+- ✅ Monthly/annual mode toggle for transport & restaurant tickets
+- ✅ Server configuration for HTTPS
+- ✅ Systemd service file
+
+### 🧪 Testing
+
+- ✅ 22 salary update tests added (`test_actualizacion_salarial.py`)
+- ✅ Comprehensive coverage of salary adjustment scenarios
+
+### 📚 Documentation
+
+- ✅ `docs/ACTUALIZACION_SALARIAL.md` — Feature overview
+- ✅ `docs/guides/FEATURE_ACTUALIZACION_SALARIAL.md` — Implementation details
+- ✅ `docs/guides/TESTING_CHECKLIST.md` — Test checklist
+- ✅ `docs/guides/CI_CD_WORKFLOW.md` — CI/CD documentation
+- ✅ `docs/guides/DEPLOYMENT_GUIDE.md` — Deployment guide
+
+---
+
 ## [1.0.0] — 5 April 2026
 
 ### 🎉 First Release
@@ -151,31 +184,6 @@ This project uses **Semantic Versioning** (MAJOR.MINOR.PATCH):
 
 ---
 
-## Future Roadmap
-
-### v1.1.0 — Q2 2026 (Planned)
-
-- [ ] Autónomos mode (self-employed calculator)
-- [ ] Export to PDF
-- [ ] Dark mode toggle
-- [ ] Multi-language support (ES/EN/CA)
-- [ ] Comparison tool (compare 2 salaries)
-
-### v1.2.0 — Q3 2026 (Planned)
-
-- [ ] Backend API (Node.js REST endpoints)
-- [ ] User accounts & scenario saving
-- [ ] Historical calculations storage
-- [ ] Email export
-
-### v2.0.0 — 2027 (Future Vision)
-
-- [ ] Mobile app (React Native)
-- [ ] Real-time government data sync
-- [ ] Advanced analytics & forecasting
-- [ ] Third-party calculator integrations
-
----
 
 ## Known Limitations (v1.0.0)
 
@@ -278,7 +286,6 @@ Free for personal, commercial, and educational use.
 ## Version History at a Glance
 
 ```
-2026-07-02 v1.0.2   🔧 UI/UX overhaul, mobile responsiveness, calculation fixes
 2026-04-05 v1.0.0   🎉 First release (1344 tests, full documentation)
 ```
 
@@ -309,4 +316,4 @@ git push && ssh server.mario.gal "cd ~/IRPF/Calculadora-IRPF && git pull"
 
 ---
 
-*Last updated: 5 April 2026*
+*Last updated: 4 July 2026*

@@ -67,3 +67,6 @@ jobs:
         echo "## Tag & Release Created ✅"
         echo "Tag: ${{ steps.semver.outputs.new_tag }}"
         echo "Commit: ${{ steps.tag_info.outputs.commit_hash }}"
+        echo ""
+        echo "**Note:** Tag created automatically on merge to main."
+        echo "Use \`gh release create\` to create a GitHub Release if needed."
