@@ -162,11 +162,12 @@ const ESPECIE = {
 // =============================================================
 //  SALARIO MÍNIMO INTERPROFESIONAL 2025
 //  RD 87/2025, de 11 de febrero (BOE 12-02-2025)
-//  1.184 €/mes × 14 pagas = 16.576 €/año
-//  Bruto anual ≤ SMI → retención IRPF = 0 (Art. 81 bis RIRPF)
+// =============================================================
+//  SMI — Salario Mínimo Interprofesional (Art. 81 bis RIRPF)
+//  Bruto anual ≤ SMI → retención IRPF = 0
 // =============================================================
 
-const SMI_ANUAL = 16576;
+const SMI_BY_YEAR = { 2025: 16576, 2026: 17094 };
 
 // =============================================================
 //  REDUCCIÓN POR RENDIMIENTOS DEL TRABAJO (Art. 20 Ley IRPF)
@@ -276,17 +277,46 @@ function aplicarEscala(base, escala) {
 //  FORMATO
 // =============================================================
 
-const fmt = n => n.toLocaleString('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-});
+// Manual Spanish number formatting — never relies on browser locale support.
+// Falls back to Intl.NumberFormat only when toFixed returns scientific notation
+// (numbers ≥ 1e21, where JS double precision is already meaningless).
+const fmt = n => {
+    const neg = n < 0 ? '-' : '';
+    const abs = Math.abs(n);
+    const fixed = abs.toFixed(2);
+    if (fixed.includes('e')) {
+        // toFixed gave scientific notation → use Intl (avoids "e+" in output)
+        return neg + new Intl.NumberFormat('es-ES', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+            useGrouping: true,
+        }).format(abs);
+    }
+    const [i, d] = fixed.split('.');
+    const dots = i.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return neg + dots + ',' + d;
+};
 const fmtPct = n => fmt(n) + '\xa0%';
+// Short format for overlay: max 12 integer digits (999.999.999.999,99 €)
+const fmtMax = n => {
+    const s = fmt(n);
+    const intPart = s.split(',')[0];
+    if (intPart.replace(/\./g, '').length > 12) {
+        const first12 = intPart.replace(/\./g, '').slice(0, 12);
+        return first12.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',00… €';
+    }
+    return s + ' €';
+};
 const fmtTramo = (d, h) =>
     h === Infinity ? fmt(d) + ' en adelante' : fmt(d) + ' — ' + fmt(h);
+
+
 
 // =============================================================
 //  RENDER HELPERS
 // =============================================================
+
+function rv(text) { return `<div class="cell-scroll">${text}</div>`; }
 
 function renderBrackets(tramos, tbId, tfId, cuotaNeta) {
     const tb = document.getElementById(tbId);
@@ -299,20 +329,275 @@ function renderBrackets(tramos, tbId, tfId, cuotaNeta) {
         if (t.activo) tr.classList.add('hi');
         tr.innerHTML =
             `<td>${fmtTramo(t.desde, t.hasta)}</td>` +
-            `<td>${fmt(t.base)} €</td>` +
+            `<td>${rv(fmt(t.base) + ' €')}</td>` +
             `<td>${fmtPct(t.tipo)}</td>` +
-            `<td class="text-right">${fmt(t.cuota)} €</td>`;
+            `<td class="text-right">${rv(fmt(t.cuota) + ' €')}</td>`;
         tb.appendChild(tr);
     });
 
     tf.innerHTML =
         `<tr><td colspan="3">Cuota íntegra (tras minorar mínimo personal)</td>` +
-        `<td class="text-right">${fmt(cuotaNeta)} €</td></tr>`;
+        `<td class="text-right">${rv(fmt(cuotaNeta) + ' €')}</td></tr>`;
 }
 
 // =============================================================
 //  PIE CHART (SVG)
 // =============================================================
+
+// =============================================================
+//  MONTHLY BAR CHART (SVG)
+// =============================================================
+
+// Active metric for the monthly chart
+// Stored at module scope so the toggle buttons can re-render the chart
+// without needing to recompute the upstream IRPF numbers.
+let _monthlyChartView = 'neto';
+let _monthlyChartArgs = null;
+const MONTHLY_VIEW_LABELS = {
+    neto:     { title: 'Lo que cobras cada mes (neto)',                    short: 'Neto' },
+    bruto:    { title: 'Salario bruto de cada mes',                        short: 'Bruto' },
+    total:    { title: 'Coste total para la empresa (por mes)',            short: 'Total' },
+    tax:      { title: 'Impuestos del trabajador (SS + IRPF)',            short: 'Impuestos' },
+    employer: { title: 'Costes del empleador (por mes)',                  short: 'Empresa' },
+};
+
+// Stacked-bar segment layout per view. Each row is [key, label, color-var].
+// The bar's total length is the sum of the listed segments; segments with a
+// value of 0 collapse to zero width.
+const SEGMENT_COLORS = {
+    neto:     'var(--chart-neto)',       // green
+    ss:       'var(--chart-ss)',         // orange
+    irpf_est: 'var(--chart-irpf-est)',   // blue
+    irpf_aut: 'var(--chart-irpf-aut)',   // pink
+    flex:     'var(--chart-esp-ad)',     // cyan
+    empSS:    'var(--chart-emp)',        // purple
+    espAd:    'var(--chart-flex)',       // teal
+};
+const VIEW_SEGMENTS = {
+    neto:  [['neto', 'Neto']],
+    bruto: [
+        ['neto',     'Neto'],
+        ['ss',       'SS trabajador'],
+        ['irpf_est', 'IRPF estatal'],
+        ['irpf_aut', 'IRPF autonómico'],
+        ['flex',     'Especie flexible'],
+    ],
+    total: [
+        ['neto',     'Neto'],
+        ['ss',       'SS trabajador'],
+        ['irpf_est', 'IRPF estatal'],
+        ['irpf_aut', 'IRPF autonómico'],
+        ['flex',     'Especie flexible'],
+        ['empSS',    'SS empresa'],
+        ['espAd',    'Especie adicional'],
+    ],
+    tax: [
+        ['ss',       'SS trabajador'],
+        ['irpf_est', 'IRPF estatal'],
+        ['irpf_aut', 'IRPF autonómico'],
+    ],
+    employer: [
+        ['empSS',    'SS empresa'],
+        ['espAd',    'Especie adicional'],
+    ],
+};
+
+// Chart layout — fixed columns.
+// Month label + bar centered together, values inside bars.
+const CHART_MONTH_X = 55;
+const CHART_BAR_X = CHART_MONTH_X + 50;
+const CHART_BAR_W = 460;
+const CHART_BAR_END = CHART_BAR_X + CHART_BAR_W;
+const CHART_H = 520;
+const CHART_W = CHART_BAR_END + 45;
+
+function updateLegendForView(viewKey) {
+    const items = document.querySelectorAll('#monthlyChartLegend .color-scheme-item');
+    if (!items.length) return;
+    const activeKeys = new Set((VIEW_SEGMENTS[viewKey] || []).map(([k]) => k));
+    // Map segment key → whether the user has any non-zero value for it.
+    // If a segment is 0 across the board, hide its legend item (nothing to explain).
+    const args = _monthlyChartArgs || {};
+    const pm = args.perMonth || {};
+    const entries = Object.values(pm);
+    const hasValue = {
+        neto:     true,
+        ss:       entries.some(m => m.ss > 0),
+        irpf_est: entries.some(m => m.irpf_est > 0),
+        irpf_aut: entries.some(m => m.irpf_aut > 0),
+        flex:     entries.some(m => m.flex > 0),
+        empSS:    (args.mensualEmpSS || 0) > 0,
+        espAd:    (args.mensualEspAd || 0) > 0,
+    };
+    items.forEach(item => {
+        const key = item.getAttribute('data-key');
+        const show = activeKeys.has(key) && hasValue[key] !== false;
+        item.style.display = show ? '' : 'none';
+    });
+}
+
+function renderMonthlyChart(salarioPorMes, bonusPorMes, brutoMensualBase, numPagas, perMonth, mensualEmpSS, mensualEspAd) {
+    _monthlyChartArgs = {
+        salarioPorMes, bonusPorMes, brutoMensualBase, numPagas,
+        perMonth, mensualEmpSS, mensualEspAd
+    };
+
+    const monthAbbr = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const viewKey = _monthlyChartView;
+
+    const months = [];
+    for (let m = 1; m <= 12; m++) {
+        const salarioMes = salarioPorMes[m] != null ? salarioPorMes[m] : brutoMensualBase;
+        const mesBonus  = bonusPorMes[m] || 0;
+        const isExtra   = numPagas === 14 && (m === 6 || m === 12);
+        const isUpdate  = m > 1 && salarioPorMes[m] != null && salarioPorMes[m] !== salarioPorMes[m - 1];
+
+        // 7-component breakdown per month. All segments are non-negative.
+        // SS/IRPF/Flex are pre-computed per month by the caller so a salary
+        // update mid-year scales the deductions with the new salary. Extra
+        // pagas skip employee deductions (SS/IRPF/Flex) but still accrue
+        // employer-side costs (empSS/espAd). Bonuses land in the neto segment.
+        const pm = perMonth[m];
+        const comps = {
+            neto:     pm.totalBrutoMes - pm.ss - pm.irpf_est - pm.irpf_aut - pm.flex,
+            ss:       pm.ss,
+            irpf_est: pm.irpf_est,
+            irpf_aut: pm.irpf_aut,
+            flex:     pm.flex,
+            empSS:    mensualEmpSS || 0,
+            espAd:    mensualEspAd || 0,
+        };
+        const viewTotal = VIEW_SEGMENTS[viewKey].reduce((s, [k]) => s + (comps[k] || 0), 0);
+
+        months.push({ m, comps, viewTotal, isExtra, isUpdate, hasBonus: mesBonus > 0, salario: salarioMes, bonus: mesBonus });
+    }
+
+        const maxValueActual = Math.max(...months.map(x => x.viewTotal), 1);
+        const maxValue = maxValueActual;
+
+    // Responsive: on narrow screens, keep H fixed (same bar height as desktop)
+    // and scale X coordinates to fit the container width.
+    const _chartEl = document.getElementById('monthlyChart');
+    const _cw = _chartEl ? (_chartEl.clientWidth || CHART_W) : CHART_W;
+    const W = _cw;
+    const H = CHART_H;
+    const sx = W / CHART_W;
+    const padT = 10, padB = 10;
+    const rowH = (H - padT - padB) / 12;
+    const barH = rowH * 0.55;
+
+    // Column widths (scaled to container)
+    const monthColX   = CHART_MONTH_X * sx;
+    const barAreaX    = CHART_BAR_X * sx;
+    const barAreaEnd  = (CHART_BAR_X + CHART_BAR_W) * sx;
+    const barAreaW    = CHART_BAR_W * sx;
+
+    // Update the h3 to reflect the current view
+    const titleEl = document.querySelector('.monthly-chart-head h3');
+    if (titleEl) titleEl.textContent = MONTHLY_VIEW_LABELS[viewKey].title;
+
+    const parts = [];
+    parts.push(`<svg class="monthly-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de cobro mensual" style="color: var(--text-1)">`);
+    parts.push(`<rect width="${W}" height="${H}" fill="var(--bg-elevated)" rx="8"/>`);
+
+    months.forEach((mo, i) => {
+        const rowY = padT + i * rowH;
+        const cy   = rowY + rowH / 2;
+
+        // Month name (left-aligned, at row center)
+        parts.push(`<text class="month-label" x="${monthColX}" y="${(cy + 5).toFixed(1)}" text-anchor="middle">${monthAbbr[mo.m - 1]}</text>`);
+
+        // Stacked bar: one <rect> per segment, placed left-to-right.
+        const by = cy - barH / 2;
+        const totalBarW = Math.max(2, (mo.viewTotal / maxValue) * barAreaW);
+        const scale = mo.viewTotal > 0 ? totalBarW / mo.viewTotal : 0;
+        let xCursor = barAreaX;
+        let lastSegX = barAreaX, lastSegW = 0;
+        VIEW_SEGMENTS[viewKey].forEach(([key, label]) => {
+            const v = mo.comps[key] || 0;
+            if (v <= 0) return;
+            const segW = Math.max(0, v * scale);
+            const segX = xCursor;
+            const tipParts = [`${label}: ${fmt(v)} €`];
+            if (mo.isExtra) tipParts.push('Paga extra');
+            if (mo.isUpdate) tipParts.push('Salario actualizado');
+            if (mo.hasBonus) tipParts.push(`Bonus: +${fmt(mo.bonus)} €`);
+            const tip = tipParts.join(' · ');
+            const isFirst = segX === barAreaX;
+            const isLast  = (xCursor + segW) >= (barAreaX + totalBarW - 0.5);
+            const rx = (isFirst || isLast) ? 5 : 0;
+            parts.push(`<rect class="bar bar-seg" x="${segX.toFixed(1)}" y="${by.toFixed(1)}" width="${segW.toFixed(1)}" height="${barH.toFixed(1)}" rx="${rx}" style="fill: ${SEGMENT_COLORS[key]};transition:opacity 0.15s ease;cursor:pointer;"><title>${tip}</title></rect>`);
+            xCursor += segW;
+            lastSegX = segX; lastSegW = segW;
+        });
+
+        // Value text — centered INSIDE the bar (rendered after bars so it sits on top)
+        const valueText = fmt(mo.viewTotal) + ' €';
+        const barCenterX = barAreaX + totalBarW / 2;
+        const approxTextW = valueText.length * 7.8;
+        const textPad = 16;
+        const bH = barH.toFixed(1);
+        if (approxTextW < totalBarW * 0.9) {
+            parts.push(`<text class="bar-value" x="${barCenterX.toFixed(1)}" y="${(cy + 5).toFixed(1)}" text-anchor="middle" style="fill:#fff;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;pointer-events:none;">${valueText}</text>`);
+        } else {
+            const foW = Math.max(totalBarW - textPad * 2, 0);
+            const foX = barAreaX + textPad;
+            parts.push(`<foreignObject x="${foX.toFixed(1)}" y="${by.toFixed(1)}" width="${foW.toFixed(1)}" height="${bH}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${foW.toFixed(1)}px;height:${bH}px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.4) transparent;display:flex;align-items:center;"><span style="color:#fff;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;">${valueText}</span></div></foreignObject>`);
+        }
+
+        // Badges: at the right end of the bar
+        const badgeMap = {
+            '+': { fill: '#10b981', label: 'Paga extra' },   // green
+            '€': { fill: '#f59e0b', label: 'Bonus' },         // amber
+            '↑': { fill: '#3b82f6', label: 'Salario actualizado' }, // blue
+        };
+        const badges = [];
+        if (mo.isExtra)  badges.push('+');
+        if (mo.hasBonus) badges.push('€');
+        if (mo.isUpdate) badges.push('↑');
+        if (badges.length) {
+            const badgeW = 16, badgeH = 16;
+            const stripW = badges.length * (badgeW + 2) - 2;
+            const barEndX = lastSegX + lastSegW;
+            let bxB = barEndX - stripW;                         // default: inside right end
+            if (bxB + stripW > barAreaEnd) bxB = barEndX + 4;    // overflow → outside
+            if (bxB + stripW > barAreaEnd) bxB = barAreaX;      // still overflow → at bar start
+            const byB = cy - badgeH / 2;
+            badges.forEach(b => {
+                const color = badgeMap[b].fill;
+                const tip = badgeMap[b].label;
+                parts.push(`<rect class="badge" x="${bxB.toFixed(1)}" y="${byB.toFixed(1)}" width="${badgeW}" height="${badgeH}" rx="8" style="fill:${color};stroke:#fff;stroke-width:1;"><title>${tip}</title></rect>`);
+                parts.push(`<text class="badge-text" x="${(bxB + badgeW/2).toFixed(1)}" y="${(byB + badgeH - 4.5).toFixed(1)}" style="fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;">${b}</text>`);
+                bxB += badgeW + 2;
+            });
+        }
+    });
+    parts.push('</svg>');
+    document.getElementById('monthlyChart').innerHTML = parts.join('');
+
+    // Indicators (badges in the chart): only show markers that have actual data.
+    const indicators = [];
+    if (numPagas === 14) {
+        indicators.push(`<span class="chart-indicator" style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#10b981;color:#fff;font-size:11px;font-weight:700;line-height:1;">+</span>Paga extra (jun/dic)</span>`);
+    }
+    if (Object.values(bonusPorMes || {}).some(v => (v || 0) > 0)) {
+        indicators.push(`<span class="chart-indicator" style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;line-height:1;">€</span>Bonus aplicado ese mes</span>`);
+    }
+    if (Object.values(salarioPorMes || {}).some(v => v != null && Math.abs(v - brutoMensualBase) > 0.01)) {
+        indicators.push(`<span class="chart-indicator" style="display:inline-flex;align-items:center;gap:6px;"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#3b82f6;color:#fff;font-size:11px;font-weight:700;line-height:1;">↑</span>Salario actualizado</span>`);
+    }
+    const indicatorsEl = document.getElementById('monthlyChartIndicators');
+    if (indicatorsEl) {
+        if (indicators.length === 0) {
+            indicatorsEl.style.display = 'none';
+        } else {
+            indicatorsEl.innerHTML = '<span style="font-weight:600;color:var(--text-1);">Marcas del gráfico:</span> ' + indicators.join(' &nbsp; ');
+        }
+    }
+
+    // Sync the color-scheme legend with the active view
+    updateLegendForView(viewKey);
+}
 
 function renderPie(svgId, legendId, slices, total) {
     const svg = document.getElementById(svgId);
@@ -338,7 +623,7 @@ function renderPie(svgId, legendId, slices, total) {
             ? `M${cx},${cy - r}A${r},${r},0,1,1,${cx - 0.001},${cy - r}Z`
             : `M${cx},${cy}L${x1},${y1}A${r},${r},0,${large},1,${x2},${y2}Z`;
         path.setAttribute('d', d);
-        path.setAttribute('fill', s.color);
+        path.style.fill = s.color;
         path.setAttribute('stroke', '#fff');
         path.setAttribute('stroke-width', '1.5');
 
@@ -356,7 +641,7 @@ function renderPie(svgId, legendId, slices, total) {
         const pct = total > 0 ? (s.value / total * 100) : 0;
         return `<div class="pie-leg-item">` +
             `<span class="pie-swatch" style="background:${s.color}"></span>` +
-            `<span class="pie-leg-text">${s.label}: <strong>${fmt(s.value)} €</strong> (${fmt(pct)}%)</span>` +
+            `<span class="pie-leg-text"><span class="pie-leg-head">${s.label}: <strong>${fmt(s.value)} €</strong></span><span class="pie-leg-pct">(${fmt(pct)}%)</span></span>` +
             `</div>`;
     }).join('');
 }
@@ -365,8 +650,91 @@ function renderPie(svgId, legendId, slices, total) {
 //  ICEBERG DIAGRAM
 // =============================================================
 
+// Cache the iceberg layout (svg vs scene rects). The layout only changes
+// on window resize, so we can avoid forced reflows on every render.
+let _iceLayoutCache = null;
+// The dynamic Y of the tip/body waterline in SVG viewBox coords. The waterline
+// CSS pseudo-elements (.iceberg-scene::before / ::after) are positioned at
+// this Y so the visual surface line stays aligned with the SVG.
+let _iceWaterlineY = 170;
+// The dynamic Y of the employee/employer split in SVG viewBox coords.
+// Exposed for debugging / future use; the visual waterline is _iceWaterlineY.
+let _iceSplitY = 305;
+window.addEventListener('resize', () => { _iceLayoutCache = null; });
+
+// Save the last set of values passed to renderIceberg so we can re-position
+// the labels if the user reveals the Distribución tab after the initial
+// calculation (the layout cache is only populated when the SVG is visible).
+let _iceLastArgs = null;
+
+function getIceLayout() {
+    if (_iceLayoutCache) return _iceLayoutCache;
+    const svgEl   = document.querySelector('.ice-svg');
+    const sceneEl = document.querySelector('.ice-scene');
+    const wrapEl  = document.querySelector('.iceberg-scene');
+    const netEl   = document.getElementById('iceZoneNet');
+    if (!svgEl || !sceneEl || !netEl) return null;
+    // The iceberg now lives inside the Distribución panel. If that tab hasn't
+    // been opened yet, the SVG is hidden and would measure as 0×0. Skip
+    // caching in that case so the next visible call gets a fresh measurement.
+    // We check actual dimensions rather than offsetParent, which can be
+    // unreliable inside flex/grid layouts.
+    const probeRect = svgEl.getBoundingClientRect();
+    if (probeRect.width === 0 || probeRect.height === 0) return null;
+    const svgRect   = probeRect;
+    const sceneRect = sceneEl.getBoundingClientRect();
+    // Read the row height once — it's determined by CSS line-height which
+    // doesn't change between renders.
+    const rowH = netEl.querySelector('.ice-row')?.offsetHeight || 28;
+    _iceLayoutCache = {
+        svgRelL: svgRect.left - sceneRect.left,
+        svgRelT: svgRect.top  - sceneRect.top,
+        sx: svgRect.width  / 300,
+        sy: svgRect.height / 440,
+        sceneW: sceneRect.width,
+        sceneH: sceneRect.height,
+        rowH,
+    };
+    // Position the waterline (CSS .iceberg-scene::before / ::after) at the
+    // current tip/body boundary. The waterline separates the visible "tip"
+    // (net salary) from the underwater body (taxes), so it follows _iceWaterlineY
+    // (NOT the employee/employer split, which sits deeper inside the body).
+    if (wrapEl) {
+        const wrapRect = wrapEl.getBoundingClientRect();
+        if (wrapRect.height > 0) {
+            const waterlineSceneY = svgRect.top - wrapRect.top + (_iceWaterlineY / 440) * svgRect.height;
+            const pct = (waterlineSceneY / wrapRect.height) * 100;
+            wrapEl.style.setProperty('--ice-waterline-top', pct.toFixed(3) + '%');
+            wrapEl.style.setProperty('--ice-waterline-pct', pct.toFixed(3) + '%');
+        }
+    }
+    return _iceLayoutCache;
+}
+
+// Linear interpolation along a polyline: given pts = [[x,y],...] sorted by y,
+// return the X coordinate at the given targetY by interpolating between the
+// two bracketing segments.  Used by iceEdge() to find where labels should
+// connect to the iceberg body edge.
+function interp(pts, targetY) {
+    for (let i = 0; i < pts.length - 1; i++) {
+        const [x1, y1] = pts[i];
+        const [x2, y2] = pts[i + 1];
+        if (y1 === y2) {
+            if (targetY === y1) return (x1 + x2) / 2;
+            continue;
+        }
+        if ((y1 <= targetY && targetY <= y2) || (y2 <= targetY && targetY <= y1)) {
+            const t = (targetY - y1) / (y2 - y1);
+            return x1 + t * (x2 - x1);
+        }
+    }
+    return pts[0][0];
+}
+
 function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, espFlexible, costeTotal) {
     if (costeTotal <= 0) return;
+    _iceLastArgs = [neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, espFlexible, costeTotal];
+    _iceLayoutCache = null;
 
     const workerTax = ssWorker + irpfEst + irpfAut + espFlexible;
     const employerTax = ssEmp + espAdicional;
@@ -376,110 +744,163 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
     const brutoVisible = netoClean + workerTax;
     const apparentRate = brutoVisible > 0 ? (workerTax / brutoVisible * 100) : 0;
 
-    // ── Iceberg SVG: set underwater body rects ──
-    const workerPct = totalTax > 0 ? (workerTax / totalTax) : 0.5;
-    const bodyTop = 195, bodyBot = 440;
-    const splitY = Math.round(bodyTop + workerPct * (bodyBot - bodyTop));
+    // ── Iceberg geometry constants (original design space) ──
+    const L = [[50,170],[38,200],[22,240],[8,280],[5,290],[8,320],[22,360],[50,395],[85,420],[140,440]];
+    const R = [[250,170],[275,195],[290,225],[293,260],[295,290],[293,325],[285,365],[255,400],[210,425],[140,440]];
+    // Tip outline (clockwise from base-left) — irregular iceberg silhouette with multiple peaks.
+    // The above-water portion; y goes 38 (apex) to 170 (waterline at base).
+    const TIP_OUTLINE = [
+        [50,170],[60,135],[78,108],[95,128],[115,98],[140,68],
+        [155,82],[175,38],[195,72],[215,98],[235,128],[250,150],[250,170]
+    ];
+    const TIP_RIDGE_PATHS = [
+        'M 78,165 L 86,128 L 95,118',
+        'M 115,165 L 122,108 L 132,82',
+        'M 140,165 L 148,95 L 155,75',
+        'M 175,165 L 180,72 L 188,55',
+        'M 195,165 L 202,95 L 210,82',
+        'M 215,165 L 222,118 L 228,105',
+    ];
+    const BODY_STROKE_PATHS = [
+        'M 25,200 Q 18,250 22,300',
+        'M 50,180 Q 35,260 45,360',
+        'M 275,200 Q 282,250 278,300',
+        'M 250,180 Q 265,260 255,360',
+    ];
+    const RIPPLE_D1 = 'M 5,172 Q 25,168 45,172 T 85,172 T 125,172 T 165,172 T 205,172 T 245,172 T 285,172';
+    const RIPPLE_D2 = 'M 0,178 Q 22,174 44,178 T 88,178 T 132,178 T 176,178 T 220,178 T 264,178 T 300,178';
 
-    const wRect = document.getElementById('iceWorkerRect');
+    // SVG viewBox anchor values (original design)
+    const TOTAL_H      = 440;
+    const ORIG_TIP_APEX = 38;
+    const ORIG_TIP_BASE = 170;
+    const ORIG_TIP_H    = ORIG_TIP_BASE - ORIG_TIP_APEX;  // 132
+    const ORIG_BODY_H   = TOTAL_H - ORIG_TIP_BASE;         // 270
+
+    // ── Compute new dimensions from the data (strictly proportional) ──
+    const netoFrac   = costeTotal > 0 ? netoClean / costeTotal : 0;
+    const tipH       = netoFrac * TOTAL_H;
+    const bodyH      = TOTAL_H - tipH;
+    const bodyTop    = tipH;
+    const bodyBot    = TOTAL_H;
+    const tipApexNew = bodyTop - tipH;
+
+    // Employee/employer split, positioned inside the new body
+    const workerFrac = totalTax > 0 ? (workerTax / totalTax) : 0.5;
+    const splitY     = bodyTop + workerFrac * bodyH;
+
+    // Y-axis remap helpers
+    const tipScale  = ORIG_TIP_H  > 0 ? tipH  / ORIG_TIP_H  : 1;
+    const bodyScale = ORIG_BODY_H > 0 ? bodyH / ORIG_BODY_H : 1;
+    function remapTipY(y) {
+        if (y <= ORIG_TIP_APEX) return tipApexNew;
+        if (y >= ORIG_TIP_BASE) return bodyTop;
+        return tipApexNew + (y - ORIG_TIP_APEX) * tipScale;
+    }
+    function remapBodyY(y) {
+        if (y <= ORIG_TIP_BASE) return bodyTop;
+        if (y >= TOTAL_H)       return bodyBot;
+        return bodyTop + (y - ORIG_TIP_BASE) * bodyScale;
+    }
+    // Body X scaling: top fixed at tip base (50/250), bottom fixed at center (140),
+    // middle bulges with bodyScale. Prevents "mushroom" (body narrower than tip)
+    // and keeps the iceberg shape at any tax level.
+    function remapBodyX(x) {
+        if (x <= 50)  return 50;                 // top-left and points left of it: fixed
+        if (x >= 250) return 250;                // top-right and points right of it: fixed
+        if (x === 140) return 140;               // bottom-center: fixed (single point)
+        if (x < 140)  return 50 - (50 - x) * bodyScale;   // left bulge, anchored at top
+        if (x > 140)  return 250 + (x - 250) * bodyScale; // right bulge, anchored at top
+        return x;
+    }
+    function shiftFromWaterline(y) { return bodyTop + (y - ORIG_TIP_BASE); }
+    function remapPathY(pathStr, remapY, remapX) {
+        return (pathStr.match(/[MLQT][^MLQT]*/g) || []).map(token => {
+            const cmd = token[0];
+            const nums = token.slice(1).trim().split(/[\s,]+/).filter(Boolean).map(Number);
+            if (nums.length === 0 || nums.length % 2 !== 0) return token;
+            const out = [];
+            for (let i = 0; i < nums.length; i += 2) {
+                const nx = remapX ? remapX(nums[i]) : nums[i];
+                const ny = remapY(nums[i + 1]);
+                out.push(Number.isInteger(nx) ? nx : nx.toFixed(1));
+                out.push(Number.isInteger(ny) ? ny : ny.toFixed(1));
+            }
+            return cmd + out.join(',');
+        }).join(' ');
+    }
+    const pointsToPath = pts => 'M ' + pts.map(([x, y]) => `${x},${(+y.toFixed(1))}`).join(' L ') + ' Z';
+
+    // ── Build the new geometry as point lists (used by both SVG and label positioning) ──
+    const tipPtsNew  = TIP_OUTLINE.map(([x, y]) => [x, remapTipY(y)]);
+    const Lnew       = L.map(([x, y]) => [remapBodyX(x), remapBodyY(y)]);
+    const Rnew       = R.map(([x, y]) => [remapBodyX(x), remapBodyY(y)]);
+    const bodyOutline = [...Lnew, ...Rnew.slice().reverse()];
+    // Outer outline: tip clockwise + R top→bottom + L bottom→top + close
+    const outlinePts  = [...tipPtsNew, ...Rnew, ...Lnew.slice().reverse()];
+
+    // ── Update SVG: paths, clipPaths, ellipse, body rects ──
+    const tipPath = pointsToPath(tipPtsNew);
+    const bodyPath = pointsToPath(bodyOutline);
+    const outlinePath = pointsToPath(outlinePts);
+
+    const $ = id => document.getElementById(id);
+    if ($('iceTipPath'))        $('iceTipPath').setAttribute('d', tipPath);
+    if ($('iceTipClipPath'))    $('iceTipClipPath').setAttribute('d', tipPath);
+    if ($('iceBodyClipPath'))   $('iceBodyClipPath').setAttribute('d', bodyPath);
+    if ($('iceOutlinePath'))    $('iceOutlinePath').setAttribute('d', outlinePath);
+
+    const ridgeEls = document.querySelectorAll('.ice-tip-ridge');
+    ridgeEls.forEach((el, i) => {
+        if (i < TIP_RIDGE_PATHS.length) el.setAttribute('d', remapPathY(TIP_RIDGE_PATHS[i], remapTipY));
+    });
+    const strokeEls = document.querySelectorAll('.ice-body-stroke');
+    strokeEls.forEach((el, i) => {
+        if (i < BODY_STROKE_PATHS.length) el.setAttribute('d', remapPathY(BODY_STROKE_PATHS[i], remapBodyY, remapBodyX));
+    });
+    if ($('iceWaterlineRipple1')) $('iceWaterlineRipple1').setAttribute('d', remapPathY(RIPPLE_D1, shiftFromWaterline));
+    if ($('iceWaterlineRipple2')) $('iceWaterlineRipple2').setAttribute('d', remapPathY(RIPPLE_D2, shiftFromWaterline));
+
+    const tipHL = $('iceTipHighlight');
+    if (tipHL) {
+        tipHL.setAttribute('cy', (tipApexNew + (55 - ORIG_TIP_APEX) * tipScale).toFixed(1));
+        tipHL.setAttribute('ry', (55 * tipScale).toFixed(1));
+    }
+
+    const wRect = $('iceWorkerRect');
     wRect.setAttribute('y', bodyTop);
     wRect.setAttribute('height', splitY - bodyTop);
-
-    const eRect = document.getElementById('iceEmployerRect');
+    const eRect = $('iceEmployerRect');
     eRect.setAttribute('y', splitY);
     eRect.setAttribute('height', bodyBot - splitY);
 
-    // ── Position labels dynamically at zone midpoints ──
-    // Compute iceberg edge at a given SVG Y
-    const L = [[20,195],[10,220],[6,260],[10,300],[22,340],[44,375],[75,405],[110,425],[150,440]];
-    const R = [[280,195],[290,220],[294,260],[290,300],[278,340],[256,375],[225,405],[190,425],[150,440]];
-    function iceEdge(svgY) {
-        if (svgY <= 195) {
-            const t = svgY / 195;
-            return [150 - 130 * t, 150 + 130 * t];
-        }
-        function interp(pts, y) {
-            for (let i = 0; i < pts.length - 1; i++) {
-                if (y >= pts[i][1] && y <= pts[i+1][1]) {
-                    const f = (y - pts[i][1]) / (pts[i+1][1] - pts[i][1]);
-                    return pts[i][0] + f * (pts[i+1][0] - pts[i][0]);
-                }
-            }
-            return pts[pts.length - 1][0];
-        }
-        return [interp(L, svgY), interp(R, svgY)];
-    }
+    // Expose for the CSS waterline positioning
+    _iceWaterlineY = bodyTop;
+    _iceSplitY     = splitY;
 
     // Zone midpoints in SVG Y coords
-    const netMidSvgY    = (0 + bodyTop) / 2;
+    const netMidSvgY    = tipApexNew + tipH / 2;
     const workerMidSvgY = (bodyTop + splitY) / 2;
     const empMidSvgY    = (splitY + bodyBot) / 2;
 
-    // Get actual rendered positions using getBoundingClientRect
-    const svgEl    = document.querySelector('.ice-svg');
-    const sceneEl  = document.querySelector('.ice-scene');
-    const svgRect  = svgEl.getBoundingClientRect();
-    const sceneRect = sceneEl.getBoundingClientRect();
-    const svgRelL  = svgRect.left - sceneRect.left;
-    const sx       = svgRect.width / 300;
-    const sy       = svgRect.height / 440;
-    const svgRelT  = svgRect.top - sceneRect.top;
-    const sceneW   = sceneRect.width;
-    const sceneH   = sceneRect.height;
-
-    // Convert SVG Y to scene-relative px
-    function scenePx(svgY) { return svgRelT + svgY * sy; }
-
-    // Set vertical positions (as %)
+    // ── Label text content (no layout needed) ──
     const netEl  = document.getElementById('iceZoneNet');
     const wrkEl  = document.getElementById('iceZoneEmployee');
     const empEl  = document.getElementById('iceZoneEmployer');
 
-    // Amount and connector on the same line, description below
-    // Left labels: [amount ·····•]  |  Right label: [•····· amount]
     netEl.innerHTML =
-        `<div class="ice-row"><span class="ice-val">€ ${fmt(netoClean)}</span><span class="ice-connector"><span class="ice-connector-dot"></span></span></div>` +
+        `<div class="ice-row"><span class="ice-val">€ ${fmt(netoClean)}</span></div>` +
         `<div class="ice-lbl-text">Pago neto</div>`;
 
     wrkEl.innerHTML =
-        `<div class="ice-row"><span class="ice-val">€ ${fmt(workerTax)}</span><span class="ice-connector"><span class="ice-connector-dot"></span></span></div>` +
+        `<div class="ice-row"><span class="ice-val">€ ${fmt(workerTax)}</span></div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por ti</div>`;
 
     empEl.innerHTML =
-        `<div class="ice-row"><span class="ice-connector"><span class="ice-connector-dot"></span></span><span class="ice-val">€ ${fmt(employerTax)}</span></div>` +
+        `<div class="ice-row"><span class="ice-val">€ ${fmt(employerTax)}</span></div>` +
         `<div class="ice-lbl-text">Impuestos pagados<br>por tu empleador</div>`;
 
-    // Position so the ice-row (amount+connector) aligns with zone midpoint
-    const netTargetPx = scenePx(netMidSvgY);
-    const wrkTargetPx = scenePx(workerMidSvgY);
-    const empTargetPx = scenePx(empMidSvgY);
-
-    // Offset by half the row height so the connector line sits at midpoint
-    const rowH = netEl.querySelector('.ice-row').offsetHeight;
-    netEl.style.top = (netTargetPx - rowH / 2) + 'px';
-    wrkEl.style.top = (wrkTargetPx - rowH / 2) + 'px';
-    empEl.style.top = (empTargetPx - rowH / 2) + 'px';
-
-    // Set row widths so dots touch the iceberg edge (flex connector fills remaining space)
-    const [netLx]    = iceEdge(netMidSvgY);
-    const [wrkLx]    = iceEdge(workerMidSvgY);
-    const [, empRx]  = iceEdge(empMidSvgY);
-
-    const netIcePx = svgRelL + netLx * sx;
-    const wrkIcePx = svgRelL + wrkLx * sx;
-    const empIcePx = svgRelL + empRx * sx;
-
-    // Left labels: row stretches from label left edge to iceberg left edge
-    const netLabelLeft = sceneW * 0.05;
-    const wrkLabelLeft = sceneW * 0.04;
-    netEl.querySelector('.ice-row').style.width = Math.max(60, netIcePx - netLabelLeft) + 'px';
-    wrkEl.querySelector('.ice-row').style.width = Math.max(60, wrkIcePx - wrkLabelLeft) + 'px';
-
-    // Right label: row stretches from iceberg right edge to label right edge
-    const empLabelRight = sceneW * 0.95;
-    empEl.querySelector('.ice-row').style.width = Math.max(60, empLabelRight - empIcePx) + 'px';
-
-    // Summary cards
+    // Summary cards (no layout needed)
     const perEuro = costeTotal > 0 ? (totalTax / costeTotal * 10).toFixed(2).replace('.', ',') : '0';
     document.getElementById('iceSummary').innerHTML =
         `<div class="ice-card">` +
@@ -496,6 +917,123 @@ function renderIceberg(neto, ssWorker, irpfEst, irpfAut, ssEmp, espAdicional, es
             `lo que solía ser un ${fmt(apparentRate)}% de la tasa de impuestos, aumenta a ${fmt(realRate)}%. ` +
             `Esto quiere decir que la tasa impositiva es ${fmt(realRate - apparentRate)}% más alta de lo que parecía al principio.</div>` +
         `</div>`;
+
+    // ── Position labels dynamically at zone midpoints (requires layout) ──
+    // The iceberg lives inside the Distribución panel. If that tab hasn't been
+    // opened yet, the SVG is hidden (offsetParent === null) and the layout
+    // would measure as 0×0. In that case, skip positioning now — the tab
+    // switcher calls repositionIceberg() when the user opens the tab.
+    const lay = getIceLayout();
+    if (!lay) return;
+    const { svgRelL, svgRelT, sx, sy, sceneW, sceneH, rowH } = lay;
+
+    function iceEdge(svgY) {
+        if (svgY <= tipApexNew) return [tipPtsNew[0][0], tipPtsNew[0][0]];
+        if (svgY >= bodyTop) {
+            return [interp(Lnew, svgY), interp(Rnew, svgY)];
+        }
+        let minX = Infinity, maxX = -Infinity;
+        for (let i = 0; i < tipPtsNew.length; i++) {
+            const [x1, y1] = tipPtsNew[i];
+            const [x2, y2] = tipPtsNew[(i + 1) % tipPtsNew.length];
+            if (y1 === y2) continue;
+            if ((y1 <= svgY && svgY <= y2) || (y2 <= svgY && svgY <= y1)) {
+                const t = (svgY - y1) / (y2 - y1);
+                const x = x1 + t * (x2 - x1);
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+            }
+        }
+        if (minX === Infinity) return [tipPtsNew[0][0], tipPtsNew[0][0]];
+        return [minX, maxX];
+    }
+
+    // Convert SVG Y to scene-relative px
+    function scenePx(svgY) { return svgRelT + svgY * sy; }
+
+    // Position so the ice-row (amount+connector) aligns with zone midpoint
+    const netTargetPx = scenePx(netMidSvgY);
+    const wrkTargetPx = scenePx(workerMidSvgY);
+    const empTargetPx = scenePx(empMidSvgY);
+
+    // Position labels at their exact zone midpoints — lines always point to the right area
+    const netTop = netTargetPx - rowH / 2;
+    const wrkTop = wrkTargetPx - rowH / 2;
+    let empTop = empTargetPx - rowH / 2;
+
+    netEl.style.top = netTop + 'px';
+    wrkEl.style.top = wrkTop + 'px';
+    empEl.style.top = empTop + 'px';
+
+    // ── SVG connector lines: horizontal from label to center of iceberg ──
+    const [netLx, netRx]  = iceEdge(netMidSvgY);
+    const [wrkLx, wrkRx]  = iceEdge(workerMidSvgY);
+    const [empLx, empRx]  = iceEdge(empMidSvgY);
+
+    // Single center X for all three dots (vertically aligned)
+    const iceCenterX = svgRelL + 150 * sx;
+
+    // Line Y = zone midpoint Y (labels are at zone midpoints, so lines point to correct area)
+    const netLineY = svgRelT + netMidSvgY * sy;
+    const wrkLineY = svgRelT + workerMidSvgY * sy;
+    const empLineY = svgRelT + empMidSvgY * sy;
+
+    // Label right edge in scene coords
+    const netLabelRight  = netEl.offsetLeft + netEl.offsetWidth;
+    const wrkLabelRight  = wrkEl.offsetLeft + wrkEl.offsetWidth;
+    const empLabelRight  = empEl.offsetLeft + empEl.offsetWidth;
+
+    // Resolve CSS variables for SVG attributes (SVG attributes don't support var())
+    const cs = getComputedStyle(document.documentElement);
+    const netColor = cs.getPropertyValue('--ice-net-text').trim() || '#6ee7b7';
+    const connColor = cs.getPropertyValue('--ice-connector').trim() || '#fbbf24';
+
+    // Build SVG connectors — horizontal lines from label edge to iceberg center
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const cSvg = document.getElementById('iceConnectorsSvg');
+    if (cSvg) {
+        cSvg.setAttribute('viewBox', `0 0 ${sceneW} ${sceneH}`);
+        const defs = cSvg.querySelector('defs');
+        cSvg.innerHTML = '';
+        if (defs) cSvg.appendChild(defs);
+
+        const connectors = [
+            { x1: netLabelRight, y1: netLineY, x2: iceCenterX, y2: netLineY, color: netColor },
+            { x1: wrkLabelRight, y1: wrkLineY, x2: iceCenterX, y2: wrkLineY, color: connColor },
+            { x1: empLabelRight,  y1: empLineY, x2: iceCenterX, y2: empLineY, color: connColor },
+        ];
+
+        connectors.forEach(({ x1, y1, x2, y2, color }) => {
+            const line = document.createElementNS(svgNS, 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', '1.5');
+            line.setAttribute('stroke-dasharray', '4 3');
+            line.setAttribute('filter', 'url(#glow)');
+            cSvg.appendChild(line);
+
+            const dot = document.createElementNS(svgNS, 'circle');
+            dot.setAttribute('cx', x2);
+            dot.setAttribute('cy', y2);
+            dot.setAttribute('r', '3.5');
+            dot.setAttribute('fill', color);
+            dot.setAttribute('filter', 'url(#glow)');
+            cSvg.appendChild(dot);
+        });
+    }
+}
+
+// Re-run renderIceberg with the last known values. Called when the user
+// reveals the Distribución tab for the first time (the layout cache was
+// empty because the SVG was hidden when the initial calculation ran).
+function repositionIceberg() {
+    if (_iceLastArgs) {
+        _iceLayoutCache = null;
+        renderIceberg.apply(null, _iceLastArgs);
+    }
 }
 
 // =============================================================
@@ -516,20 +1054,21 @@ function addBonus() {
     row.className = 'especie-custom-row';
     row.id = 'bonusRow' + bonusCounter;
     const opts = MESES_LABELS.map((m, i) =>
-        `<option value="${i + 1}"${i === 11 ? ' selected' : ''}>${m}</option>`
+        `<option value="${i + 1}"${i === 0 ? ' selected' : ''}>${m}</option>`
     ).join('');
     row.innerHTML =
         `<input type="text" class="bonus-importe" placeholder="Importe (€)" inputmode="decimal" autocomplete="off">` +
         `<select class="bonus-mes">${opts}</select>` +
-        `<button type="button" class="btn-remove-especie" onclick="removeBonus(this)" title="Eliminar">✕</button>`;
+        `<button type="button" class="btn-remove-especie" title="Eliminar">✕</button>`;
     document.getElementById('bonusList').appendChild(row);
     row.querySelector('.bonus-importe').addEventListener('input', () => scheduleCalcGlobal());
     row.querySelector('.bonus-mes').addEventListener('change', () => scheduleCalcGlobal());
+    row.querySelector('.btn-remove-especie').addEventListener('click', () => removeBonus(row));
     row.querySelector('.bonus-importe').focus();
 }
 
-function removeBonus(btn) {
-    btn.closest('.especie-custom-row').remove();
+function removeBonus(row) {
+    row.remove();
     scheduleCalcGlobal();
 }
 
@@ -563,16 +1102,23 @@ function addActualizacionSalarial() {
     row.innerHTML =
         `<input type="text" class="actualizacion-nuevoSalario" placeholder="Nuevo salario anual (€)" inputmode="decimal" autocomplete="off">` +
         `<input type="date" class="actualizacion-fecha" autocomplete="off">` +
-        `<button type="button" class="btn-remove-especie" onclick="removeActualizacionSalarial(this)" title="Eliminar">✕</button>`;
-    
+        `<button type="button" class="btn-remove-especie" title="Eliminar">✕</button>`;
+
+    // Default to day 1 of the current month (year is ignored by the parser —
+    // it only uses month/day against the year selected in the year selector).
+    const t = new Date();
+    const defaultDate = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-01`;
+    row.querySelector('.actualizacion-fecha').value = defaultDate;
+
     document.getElementById('actualizacionList').appendChild(row);
     row.querySelector('.actualizacion-nuevoSalario').addEventListener('input', () => scheduleCalcGlobal());
     row.querySelector('.actualizacion-fecha').addEventListener('change', () => scheduleCalcGlobal());
+    row.querySelector('.btn-remove-especie').addEventListener('click', () => removeActualizacionSalarial(row));
     row.querySelector('.actualizacion-nuevoSalario').focus();
 }
 
-function removeActualizacionSalarial(btn) {
-    btn.closest('.especie-custom-row').remove();
+function removeActualizacionSalarial(row) {
+    row.remove();
     scheduleCalcGlobal();
 }
 
@@ -635,14 +1181,16 @@ function addEspecieCustom() {
     row.id = 'espCustomRow' + espCustomCounter;
     row.innerHTML =
         '<input type="text" class="especie-custom-name" placeholder="Nombre (ej: Teletrabajo)" autocomplete="off">' +
-        '<label class="especie-din-label"><input type="checkbox" class="especie-din-chk" onchange="toggleEspecieDin(this)"> Din.</label>' +
+        '<label class="especie-din-label"><input type="checkbox" class="especie-din-chk"> Monetario</label>' +
         '<span class="especie-custom-tag especie-dual-tag tag-adicional especie-esp-only">Ad.</span>' +
         '<input type="text" class="especie-custom-ad especie-esp-only" placeholder="€/mes" inputmode="decimal" autocomplete="off">' +
         '<span class="especie-custom-tag especie-dual-tag tag-flexible especie-esp-only">Fl.</span>' +
         '<input type="text" class="especie-custom-fl especie-esp-only" placeholder="€/mes" inputmode="decimal" autocomplete="off">' +
         '<input type="text" class="especie-custom-din" placeholder="€/mes" inputmode="decimal" autocomplete="off" style="display:none">' +
-        '<button type="button" class="btn-remove-especie" onclick="removeEspecieCustom(this)" title="Eliminar">✕</button>';
+        '<button type="button" class="btn-remove-especie" title="Eliminar">✕</button>';
     document.getElementById('espCustomList').appendChild(row);
+    row.querySelector('.especie-din-chk').addEventListener('change', (e) => toggleEspecieDin(e.currentTarget));
+    row.querySelector('.btn-remove-especie').addEventListener('click', () => removeEspecieCustom(row));
     row.querySelector('.especie-custom-name').focus();
 }
 
@@ -654,8 +1202,8 @@ function toggleEspecieDin(chk) {
     scheduleCalcGlobal();
 }
 
-function removeEspecieCustom(btn) {
-    btn.closest('.especie-custom-row').remove();
+function removeEspecieCustom(row) {
+    row.remove();
 }
 
 function parseRawEuro(raw) {
@@ -948,19 +1496,18 @@ function calcular(scroll = false) {
     //  1. SEGURIDAD SOCIAL — TRABAJADOR
     // ───────────────────────────────────────────
 
-    const baseMin = BASES.minByGroup[grupo] || BASES.minByGroup[4];
     const baseMax = BASES.max;
 
     // Per-month SS base (adjusted salaries, bonuses may hit a higher capped base)
     let totalSSbaseAnual = 0;
     for (let m = 1; m <= 12; m++) {
         const brutoMes = salarioPorMes[m] + (bonusPorMes[m] || 0);
-        const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
+        const baseMes = Math.min(brutoMes, baseMax);
         totalSSbaseAnual += baseMes;
     }
     // Display base (weighted average) and representative base for ordinary months
     const brutoMensualBase = (bruto + customDinAnual) / 12;
-    const baseSSmensualSinBonus = Math.min(Math.max(brutoMensualBase, baseMin), baseMax);
+    const baseSSmensualSinBonus = Math.min(brutoMensualBase, baseMax);
     const baseSSmensual = totalSSbaseAnual / 12;
 
     const desempleoW = SS_DESEMPLEO_WORKER[contrato];
@@ -1013,7 +1560,8 @@ function calcular(scroll = false) {
     let cuotaIRPF = cuotaEstatal + cuotaAutonomica;
 
     // SMI exento de retención (Art. 81 bis RIRPF)
-    if (brutoConBonus <= SMI_ANUAL) {
+    const smiAnual = SMI_BY_YEAR[anio] || SMI_BY_YEAR[2026];
+    if (brutoConBonus <= smiAnual + 0.01) {
         cuotaEstatal = 0;
         cuotaAutonomica = 0;
         cuotaIRPF = 0;
@@ -1024,7 +1572,7 @@ function calcular(scroll = false) {
     // ───────────────────────────────────────────
 
     let ahorroFlexible = 0;
-    if (exentaFlexible > 0 && brutoConBonus > SMI_ANUAL) {
+    if (exentaFlexible > 0 && brutoConBonus > smiAnual + 0.01) {
         // Recalculate IRPF as if no flexible exemption existed
         const rendIntSinFlex = brutoConBonus + gravadaAdicional;
         const rendNetoSinFlex = Math.max(rendIntSinFlex - gastosDeducibles, 0);
@@ -1072,7 +1620,9 @@ function calcular(scroll = false) {
     //  RENDER
     // ===========================
 
-    document.getElementById('results').classList.add('show');
+    const resultsEl = document.getElementById('results');
+    resultsEl.classList.add('show');
+    resultsEl.classList.add('has-data');
 
     // --- 1. SS table (combined worker + employer) ---
     const ssConceptos = [
@@ -1095,13 +1645,13 @@ function calcular(scroll = false) {
         const rowCls = shared ? 'ss-shared' : (c.tipoW > 0 ? 'ss-worker-only' : 'ss-employer-only');
         return `<tr class="${rowCls}">` +
             `<td>${c.nombre}</td>` +
-            `<td>${fmt(baseSSmensual)} €</td>` +
+            `<td>${rv(fmt(baseSSmensual) + ' €')}</td>` +
             `<td>${c.tipoW ? fmtPct(c.tipoW) : '—'}</td>` +
-            `<td class="text-right">${c.tipoW ? fmt(anualW) + ' €' : '—'}</td>` +
+            `<td class="text-right">${c.tipoW ? rv(fmt(anualW) + ' €') : '—'}</td>` +
             `<td>${c.tipoE ? fmtPct(c.tipoE) : '—'}</td>` +
-            `<td class="text-right">${c.tipoE ? fmt(anualE) + ' €' : '—'}</td>` +
+            `<td class="text-right">${c.tipoE ? rv(fmt(anualE) + ' €') : '—'}</td>` +
             `<td>${fmtPct(tipoComb)}</td>` +
-            `<td class="text-right">${fmt(anualComb)} €</td>` +
+            `<td class="text-right">${rv(fmt(anualComb) + ' €')}</td>` +
             `</tr>`;
     }).join('');
     if (solidaridad.tramos.length > 0) {
@@ -1110,11 +1660,11 @@ function calcular(scroll = false) {
             `<td>${t.label} <small class="solidarity-note">(base anual: ${fmt(t.base)} €)</small></td>` +
             `<td>—</td>` +
             `<td>${fmtPct(t.tipoW)}</td>` +
-            `<td class="text-right">${fmt(t.cuotaWorker)} €</td>` +
+            `<td class="text-right">${rv(fmt(t.cuotaWorker) + ' €')}</td>` +
             `<td>${fmtPct(t.tipoE)}</td>` +
-            `<td class="text-right">${fmt(t.cuotaEmployer)} €</td>` +
+            `<td class="text-right">${rv(fmt(t.cuotaEmployer) + ' €')}</td>` +
             `<td>${fmtPct(t.tipoTotal)}</td>` +
-            `<td class="text-right">${fmt(t.cuotaWorker + t.cuotaEmployer)} €</td>` +
+            `<td class="text-right">${rv(fmt(t.cuotaWorker + t.cuotaEmployer) + ' €')}</td>` +
             `</tr>`
         ).join('');
         // Subtotal row for Cuota de Solidaridad
@@ -1128,11 +1678,11 @@ function calcular(scroll = false) {
             `<td><strong>Subtotal C. Solidaridad</strong></td>` +
             `<td>—</td>` +
             `<td>${fmtPct(solTipoW)}</td>` +
-            `<td class="text-right"><strong>${fmt(solSubW)} €</strong></td>` +
+            `<td class="text-right"><strong>${rv(fmt(solSubW) + ' €')}</strong></td>` +
             `<td>${fmtPct(solTipoE)}</td>` +
-            `<td class="text-right"><strong>${fmt(solSubE)} €</strong></td>` +
+            `<td class="text-right"><strong>${rv(fmt(solSubE) + ' €')}</strong></td>` +
             `<td>${fmtPct(solTipoTotal)}</td>` +
-            `<td class="text-right"><strong>${fmt(solSubW + solSubE)} €</strong></td>` +
+            `<td class="text-right"><strong>${rv(fmt(solSubW + solSubE) + ' €')}</strong></td>` +
             `</tr>`;
     }
     const totalCombAnual = totalSSanual + totalEmpAnual;
@@ -1141,10 +1691,52 @@ function calcular(scroll = false) {
     const totalCombTipo = totalWorkerTipo + totalEmpTipo;
     const hasSolidaridad = solidaridad.tramos.length > 0;
     document.getElementById('legSolidaridad').style.display = hasSolidaridad ? '' : 'none';
+    const hasShared = ssConceptos.some(c => c.tipoW > 0 && c.tipoE > 0);
+    const hasWorkerOnly = ssConceptos.some(c => c.tipoW > 0 && c.tipoE === 0);
+    const hasEmployerOnly = ssConceptos.some(c => c.tipoW === 0 && c.tipoE > 0);
+    document.querySelector('[data-panel="ss"] .meta .ss-leg-item:nth-child(1)').style.display = hasShared ? '' : 'none';
+    document.querySelector('[data-panel="ss"] .meta .ss-leg-item:nth-child(2)').style.display = hasWorkerOnly ? '' : 'none';
+    document.querySelector('[data-panel="ss"] .meta .ss-leg-item:nth-child(3)').style.display = hasEmployerOnly ? '' : 'none';
     tfSS.innerHTML = `<tr><td colspan="2">Total${hasSolidaridad ? ' <small class="solidarity-note">(incl. C. Solidaridad)</small>' : ''}</td>` +
-        `<td>${fmtPct(totalWorkerTipo)}</td><td class="text-right">${fmt(totalSSanual)} €</td>` +
-        `<td>${fmtPct(totalEmpTipo)}</td><td class="text-right">${fmt(totalEmpAnual)} €</td>` +
-        `<td>${fmtPct(totalCombTipo)}</td><td class="text-right">${fmt(totalCombAnual)} €</td></tr>`;
+        `<td>${fmtPct(totalWorkerTipo)}</td><td class="text-right">${rv(fmt(totalSSanual) + ' €')}</td>` +
+        `<td>${fmtPct(totalEmpTipo)}</td><td class="text-right">${rv(fmt(totalEmpAnual) + ' €')}</td>` +
+        `<td>${fmtPct(totalCombTipo)}</td><td class="text-right">${rv(fmt(totalCombAnual) + ' €')}</td></tr>`;
+
+    // --- Mobile split tables ---
+    const mobileRows = ssConceptos.map(c => {
+        const anualW = baseSSmensual * (c.tipoW / 100) * 12;
+        const anualE = baseSSmensual * (c.tipoE / 100) * 12;
+        const tipoComb = c.tipoW + c.tipoE;
+        const anualComb = anualW + anualE;
+        return { nombre: c.nombre, tipoW: c.tipoW, anualW, tipoE: c.tipoE, anualE, tipoComb, anualComb };
+    });
+    const mobTbW = document.getElementById('tbSSw');
+    const mobTbE = document.getElementById('tbSSe');
+    const mobTbC = document.getElementById('tbSSc');
+    if (mobTbW) {
+        document.getElementById('ssMobileBaseW').textContent = `Base mensual: ${fmt(baseSSmensual)} €`;
+        document.getElementById('ssMobileBaseE').textContent = `Base mensual: ${fmt(baseSSmensual)} €`;
+        document.getElementById('ssMobileBaseC').textContent = `Base mensual: ${fmt(baseSSmensual)} €`;
+        mobTbW.innerHTML = mobileRows.map(r =>
+            `<tr><td>${r.nombre}</td><td>${r.tipoW ? fmtPct(r.tipoW) : '—'}</td><td class="text-right">${r.tipoW ? rv(fmt(r.anualW) + ' €') : '—'}</td></tr>`
+        ).join('') +
+        (hasSolidaridad ? `<tr class="ss-solidarity"><td><strong>Subtotal C. Solidaridad</strong></td><td>${fmtPct(solidaridad.tramos.reduce((s, t) => s + t.tipoW, 0))}</td><td class="text-right"><strong>${rv(fmt(solidaridad.worker) + ' €')}</strong></td></tr>` : '') +
+        `<tr><td><strong>Total</strong></td><td><strong>${fmtPct(totalWorkerTipo)}</strong></td><td class="text-right"><strong>${rv(fmt(totalSSanual) + ' €')}</strong></td></tr>`;
+    }
+    if (mobTbE) {
+        mobTbE.innerHTML = mobileRows.map(r =>
+            `<tr><td>${r.nombre}</td><td>${r.tipoE ? fmtPct(r.tipoE) : '—'}</td><td class="text-right">${r.tipoE ? rv(fmt(r.anualE) + ' €') : '—'}</td></tr>`
+        ).join('') +
+        (hasSolidaridad ? `<tr class="ss-solidarity"><td><strong>Subtotal C. Solidaridad</strong></td><td>${fmtPct(solidaridad.tramos.reduce((s, t) => s + t.tipoE, 0))}</td><td class="text-right"><strong>${rv(fmt(solidaridad.employer) + ' €')}</strong></td></tr>` : '') +
+        `<tr><td><strong>Total</strong></td><td><strong>${fmtPct(totalEmpTipo)}</strong></td><td class="text-right"><strong>${rv(fmt(totalEmpAnual) + ' €')}</strong></td></tr>`;
+    }
+    if (mobTbC) {
+        mobTbC.innerHTML = mobileRows.map(r =>
+            `<tr><td>${r.nombre}</td><td>${fmtPct(r.tipoComb)}</td><td class="text-right">${rv(fmt(r.anualComb) + ' €')}</td></tr>`
+        ).join('') +
+        (hasSolidaridad ? `<tr class="ss-solidarity"><td><strong>Subtotal C. Solidaridad</strong></td><td>${fmtPct(solidaridad.tramos.reduce((s, t) => s + t.tipoTotal, 0))}</td><td class="text-right"><strong>${rv(fmt(solidaridad.worker + solidaridad.employer) + ' €')}</strong></td></tr>` : '') +
+        `<tr><td><strong>Total</strong></td><td><strong>${fmtPct(totalCombTipo)}</strong></td><td class="text-right"><strong>${rv(fmt(totalCombAnual) + ' €')}</strong></td></tr>`;
+    }
 
     // --- 2. IRPF flow ---
     const flowRows = [
@@ -1199,14 +1791,43 @@ function calcular(scroll = false) {
     if (ahorroFlexible > 0) {
         flowRows.push(['\u2728 Ahorro fiscal por retrib. flexible', ahorroFlexible, true]);
     }
-    document.getElementById('tbFlow').innerHTML = flowRows.map(([c, v, bold, sub]) => {
-        const bs = bold ? 'font-weight:700' : '';
-        const ss = sub ? 'font-size:.85rem;color:var(--gray-600)' : '';
-        if (v === null) return `<tr><td style="color:var(--gray-600);font-style:italic" colspan="2">${c}</td></tr>`;
-        const isAhorro = c.includes('Ahorro fiscal');
-        const cs = isAhorro ? 'color:var(--brand);font-weight:700' : (v < 0 ? 'color:var(--accent)' : '');
-        return `<tr><td style="${bs};${ss}">${c}</td><td class="text-right" style="${bs};${cs};${ss}">${fmt(v)} €</td></tr>`;
-    }).join('');
+    const tbFlow = document.getElementById('tbFlow');
+    tbFlow.replaceChildren();
+    flowRows.forEach(([c, v, bold, sub]) => {
+        const tr = document.createElement('tr');
+        if (v === null) {
+            const td = document.createElement('td');
+            td.colSpan = 2;
+            td.style.color = 'var(--gray-600)';
+            td.style.fontStyle = 'italic';
+            td.textContent = c;
+            tr.appendChild(td);
+        } else {
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td2.className = 'text-right';
+            if (bold) { td1.style.fontWeight = '700'; td2.style.fontWeight = '700'; }
+            if (sub) {
+                td1.style.fontSize = '.85rem';
+                td1.style.color = 'var(--gray-600)';
+                td2.style.fontSize = '.85rem';
+                td2.style.color = 'var(--gray-600)';
+            }
+            if (c.includes('Ahorro fiscal')) {
+                td1.style.color = 'var(--accent)';
+                td2.style.color = 'var(--accent)';
+                td1.style.fontWeight = '700';
+                td2.style.fontWeight = '700';
+            } else if (v < 0) {
+                td2.style.color = 'var(--accent)';
+            }
+            td1.textContent = c;
+            td2.innerHTML = rv(fmt(v) + ' €');
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+        }
+        tbFlow.appendChild(tr);
+    });
 
     // --- 3. Mínimo personal (side-by-side) ---
     const detallesEst = mins.estatal.detalles;
@@ -1216,7 +1837,7 @@ function calcular(scroll = false) {
     for (let i = 0; i < rows; i++) {
         const e = detallesEst[i];
         const a = detallesAut[i];
-        minHtml += `<tr><td>${e ? e.c : ''}</td><td class="text-right">${e ? fmt(e.v) + ' €' : ''}</td><td class="text-right">${a ? fmt(a.v) + ' €' : ''}</td></tr>`;
+        minHtml += `<tr><td>${e ? e.c : ''}</td><td class="text-right">${e ? rv(fmt(e.v) + ' €') : ''}</td><td class="text-right">${a ? rv(fmt(a.v) + ' €') : ''}</td></tr>`;
     }
     document.getElementById('tbMin').innerHTML = minHtml;
     document.getElementById('tfMinEst').textContent = fmt(minimoEst) + ' €';
@@ -1230,10 +1851,10 @@ function calcular(scroll = false) {
     const tipoEfEst = bruto > 0 ? (cuotaEstatal / bruto * 100) : 0;
     const tipoEfAut = bruto > 0 ? (cuotaAutonomica / bruto * 100) : 0;
     document.getElementById('tbIrpfResumen').innerHTML =
-        `<tr><td>Cuota estatal</td><td class="text-right">${fmt(cuotaEstatal)} €</td><td class="text-right">${fmtPct(tipoEfEst)}</td></tr>` +
-        `<tr><td>Cuota autonómica (Andalucía)</td><td class="text-right">${fmt(cuotaAutonomica)} €</td><td class="text-right">${fmtPct(tipoEfAut)}</td></tr>`;
+        `<tr><td>Cuota estatal</td><td class="text-right">${rv(fmt(cuotaEstatal) + ' €')}</td><td class="text-right">${rv(fmtPct(tipoEfEst))}</td></tr>` +
+        `<tr><td>Cuota autonómica (Andalucía)</td><td class="text-right">${rv(fmt(cuotaAutonomica) + ' €')}</td><td class="text-right">${rv(fmtPct(tipoEfAut))}</td></tr>`;
     document.getElementById('tfIrpfResumen').innerHTML =
-        `<tr><td>Total IRPF</td><td class="text-right">${fmt(cuotaIRPF)} €</td><td class="text-right">${fmtPct(tipoIRPF)}</td></tr>`;
+        `<tr><td>Total IRPF</td><td class="text-right">${rv(fmt(cuotaIRPF) + ' €')}</td><td class="text-right">${rv(fmtPct(tipoIRPF))}</td></tr>`;
 
     // --- Pre-compute monthly values (needed by hero cards and monthly view) ---
     const brutoPorPaga = (bruto + customDinAnual) / numPagas;
@@ -1275,9 +1896,42 @@ function calcular(scroll = false) {
         { lbl: 'SS empresa', val: fmt(totalEmpAnual) + ' €', cls: 'clr-orange' },
         { lbl: 'Coste total empresa', val: fmt(costeTotal) + ' €', cls: 'clr-red' },
     );
-    document.getElementById('heroGrid').innerHTML = heroData.map(h =>
+    // --- Distribute hero data: key metrics → #resultHero, rest → #heroGrid ---
+    const heroKeyMap = {};
+    ['Salario bruto anual', 'Seg. Social trabajador', 'IRPF total',
+     'Coste total empresa', 'Tipo efectivo global', 'Neto mes ordinario',
+     'Salario neto anual'].forEach(k => { heroKeyMap[k] = heroData.find(h => h.lbl === k); });
+    const otherHeroData = heroData.filter(h => !(h.lbl in heroKeyMap));
+
+    const setHero = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val) el.textContent = val;
+    };
+    if (heroKeyMap['Salario neto anual']) {
+        setHero('resultHeroNetoNum', heroKeyMap['Salario neto anual'].val);
+    }
+    setHero('resultHeroNetoMes', heroKeyMap['Neto mes ordinario'] && heroKeyMap['Neto mes ordinario'].val);
+    if (heroKeyMap['Tipo efectivo global']) {
+        setHero('resultHeroTipoEf', heroKeyMap['Tipo efectivo global'].val);
+    }
+    setHero('resultHeroBruto', heroKeyMap['Salario bruto anual'] && heroKeyMap['Salario bruto anual'].val);
+    setHero('resultHeroIrpf', heroKeyMap['IRPF total'] && heroKeyMap['IRPF total'].val);
+    setHero('resultHeroSS', heroKeyMap['Seg. Social trabajador'] && heroKeyMap['Seg. Social trabajador'].val);
+    setHero('resultHeroCoste', heroKeyMap['Coste total empresa'] && heroKeyMap['Coste total empresa'].val);
+
+    // Flash the neto number
+    const heroNumEl = document.getElementById('resultHeroNeto');
+    if (heroNumEl) {
+        heroNumEl.classList.remove('flash');
+        void heroNumEl.offsetWidth;
+        heroNumEl.classList.add('flash');
+        setTimeout(() => heroNumEl.classList.remove('flash'), 200);
+    }
+
+    document.getElementById('heroGrid').innerHTML = otherHeroData.map(h =>
         `<div class="hero-card"><div class="lbl">${h.lbl}</div><div class="val ${h.cls}">${h.val}</div></div>`
     ).join('');
+
 
     // --- Monthly view ---
     document.getElementById('monthlyHint').textContent =
@@ -1305,21 +1959,56 @@ function calcular(scroll = false) {
             allSpecialMonths.add(parseInt(m, 10));
         }
     });
-    
+
+    // Per-month precomputation for hero cards and chart. SS is recomputed
+    // from the actual monthly base (so salary updates scale SS up/down).
+    // IRPF retention is pro-rata by per-paga amount + bonus, distributed over
+    // the 12 ordinary months only (extra paga is "íntegra", retention = 0).
+    // Sum over 12 ordinary months reconciles to cuotaEstatal + cuotaAutonomica.
+    let anualBrutoOrdinario = 0;
+    for (let m = 1; m <= 12; m++) {
+        const salarioMes = salarioPorMes[m] != null ? salarioPorMes[m] : brutoMensualBase;
+        anualBrutoOrdinario += (salarioMes * 12) / numPagas;
+    }
+    const tipoEst = anualBrutoOrdinario > 0 ? cuotaEstatal / anualBrutoOrdinario : 0;
+    const tipoAut = anualBrutoOrdinario > 0 ? cuotaAutonomica / anualBrutoOrdinario : 0;
+
+    const perMonth = {};
+    for (let m = 1; m <= 12; m++) {
+        const salarioMes = salarioPorMes[m] != null ? salarioPorMes[m] : brutoMensualBase;
+        const mesBonus = bonusPorMes[m] || 0;
+        const isExtra = numPagas === 14 && (m === 6 || m === 12);
+        const brutoPorPagaMes = (salarioMes * 12) / numPagas;
+        const pagoMes = isExtra ? brutoPorPagaMes * 2 : brutoPorPagaMes;
+        const totalBrutoMes = pagoMes + mesBonus;
+        const baseMesSS = Math.min(salarioMes + mesBonus, baseMax);
+        perMonth[m] = {
+            ss:       isExtra ? 0 : conceptosSS.reduce((s, c) => s + baseMesSS * (c.tipo / 100), 0),
+            irpf_est: isExtra ? 0 : totalBrutoMes * tipoEst,
+            irpf_aut: isExtra ? 0 : totalBrutoMes * tipoAut,
+            flex:     isExtra ? 0 : mensualFlex,
+            pagoMes,
+            totalBrutoMes,
+        };
+    }
+
     allSpecialMonths.forEach(mes => {
         const salarioMes = salarioPorMes[mes] || brutoMensualBase;
         const mesBonus = bonusPorMes[mes] || 0;
-        const brutoMes = salarioMes + mesBonus;
-        const baseMes = Math.min(Math.max(brutoMes, baseMin), baseMax);
-        const ssMes = conceptosSS.reduce((s, c) => s + baseMes * (c.tipo / 100), 0);
-        const netoMes = brutoMes / (numPagas === 14 ? 14 : 12) - ssMes - mensualIRPF - mensualFlex;
-        
+        const pm = perMonth[mes];
+        const brutoMes = pm.totalBrutoMes;
+        const isExtraPaga = numPagas === 14 && (mes === 6 || mes === 12);
+        // Extra paga months skip employee deductions (SS/IRPF/flex).
+        const netoMes = isExtraPaga
+            ? brutoMes
+            : brutoMes - pm.ss - pm.irpf_est - pm.irpf_aut - pm.flex;
+
         let label = `${MESES_LABELS[mes - 1]} (bruto)`;
         if (mesBonus > 0) label += ` + bonus`;
         if (salarioPorMes[mes] !== salarioPorMes[mes - 1] && mes > 1) label += ` *actualizado*`;
-        
+
         monthItems.push({ lbl: label, val: fmt(brutoMes) + ' €' });
-        monthItems.push({ lbl: `SS ${MESES_LABELS[mes - 1]}`, val: fmt(ssMes) + ' €' });
+        monthItems.push({ lbl: `SS ${MESES_LABELS[mes - 1]}`, val: fmt(pm.ss) + ' €' });
         monthItems.push({ lbl: `Neto ${MESES_LABELS[mes - 1]}`, val: fmt(netoMes) + ' €' });
     });
 
@@ -1330,13 +2019,20 @@ function calcular(scroll = false) {
         `<div class="hero-card"><div class="lbl">${i.lbl}</div><div class="val">${i.val}</div></div>`
     ).join('');
 
+    // --- 7b. Monthly bar chart (4 view toggle: neto / bruto / total / tax) ---
+    renderMonthlyChart(
+        salarioPorMes, bonusPorMes, brutoMensualBase, numPagas, perMonth,
+        totalEmpAnual / 12,   // mensualEmpSS     (employer SS spread over 12 months)
+        totalAdicional / 12   // mensualEspAd     (especie adicional spread over 12 months)
+    );
+
     // --- 8. Pie chart: salary breakdown ---
     if (brutoConBonus > 0) {
         const slices = [
-            { label: 'Neto', value: Math.max(neto, 0), color: 'var(--brand)' },
-            { label: 'SS trabajador', value: totalSSanual, color: 'var(--orange)' },
-            { label: 'IRPF estatal', value: cuotaEstatal, color: 'var(--blue)' },
-            { label: 'IRPF autonómico', value: cuotaAutonomica, color: 'var(--accent)' },
+            { label: 'Neto', value: Math.max(neto, 0), color: 'var(--chart-neto)' },
+            { label: 'SS trabajador', value: totalSSanual, color: 'var(--chart-ss)' },
+            { label: 'IRPF estatal', value: cuotaEstatal, color: 'var(--chart-irpf-est)' },
+            { label: 'IRPF autonómico', value: cuotaAutonomica, color: 'var(--chart-irpf-aut)' },
         ];
         renderPie('pieChart', 'pieLegend', slices, brutoConBonus);
     }
@@ -1365,7 +2061,7 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
         const val = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
         if (!val || val <= 0) return;  // don't recalc on 0 or invalid
         clearTimeout(_timer);
-        _timer = setTimeout(calcular, 400);
+        _timer = setTimeout(calcular, 150);
     }
 
     // Expose globally for dynamically-added bonus rows
@@ -1393,4 +2089,41 @@ document.getElementById('cnae').addEventListener('keydown', function(e) {
     // Custom especie rows — delegate on list container
     document.getElementById('espCustomList').addEventListener('input', scheduleCalc);
     document.getElementById('espCustomList').addEventListener('change', scheduleCalc);
+})();
+
+// Monthly chart view toggle (Neto / Bruto / Total / Impuestos).
+// Re-renders the chart from cached args — no IRPF recomputation needed.
+(function () {
+    const toggleEl = document.getElementById('monthlyViewToggle');
+    if (!toggleEl) return;
+    toggleEl.addEventListener('click', function (e) {
+        const btn = e.target.closest('.view-toggle-btn');
+        if (!btn || !toggleEl.contains(btn)) return;
+        const view = btn.dataset.view;
+        if (!view || !MONTHLY_VIEW_LABELS[view]) return;
+        if (view === _monthlyChartView) return;
+        _monthlyChartView = view;
+        toggleEl.querySelectorAll('.view-toggle-btn').forEach(b => {
+            const active = b.dataset.view === view;
+            b.classList.toggle('is-active', active);
+            b.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        updateLegendForView(view);
+        if (_monthlyChartArgs) renderMonthlyChart(
+            _monthlyChartArgs.salarioPorMes, _monthlyChartArgs.bonusPorMes,
+            _monthlyChartArgs.brutoMensualBase, _monthlyChartArgs.numPagas,
+            _monthlyChartArgs.perMonth,
+            _monthlyChartArgs.mensualEmpSS, _monthlyChartArgs.mensualEspAd
+        );
+    });
+
+    // Expose re-render so ui.js can trigger it on tab switch
+    window._rerenderMonthlyChart = function() {
+        if (_monthlyChartArgs) renderMonthlyChart(
+            _monthlyChartArgs.salarioPorMes, _monthlyChartArgs.bonusPorMes,
+            _monthlyChartArgs.brutoMensualBase, _monthlyChartArgs.numPagas,
+            _monthlyChartArgs.perMonth,
+            _monthlyChartArgs.mensualEmpSS, _monthlyChartArgs.mensualEspAd
+        );
+    };
 })();

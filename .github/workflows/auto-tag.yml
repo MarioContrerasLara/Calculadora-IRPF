@@ -7,9 +7,11 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
+
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     
@@ -51,9 +53,18 @@ jobs:
         
         echo "✅ Created and pushed tag: $NEW_TAG"
     
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        NEW_TAG=${{ steps.semver.outputs.new_tag }}
+        gh release create "$NEW_TAG" \
+          --title "$NEW_TAG" \
+          --generate-notes
+
     - name: Tag Summary
       run: |
-        echo "## Tag Created ✅"
+        echo "## Tag & Release Created ✅"
         echo "Tag: ${{ steps.semver.outputs.new_tag }}"
         echo "Commit: ${{ steps.tag_info.outputs.commit_hash }}"
         echo ""

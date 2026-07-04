@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@playwright/mcp@latest",
+        "--executable-path",
+        "/home/mario/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome",
+        "--no-sandbox"
+      ],
+      "enabled": true,
+      "env": {
+        "LD_LIBRARY_PATH": "/home/mario/.local/libs/usr/lib64"
+      }
+    }
+  }
+}

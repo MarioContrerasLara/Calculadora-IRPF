@@ -4,6 +4,44 @@ All notable changes to this project are documented here.
 
 ---
 
+## [1.0.2] — 2 July 2026
+
+### 🔧 Bug Fixes
+
+- **SS base minimum removed** — SS contributions now follow actual salary (no longer clamped to SMI minimum base)
+- **SMI exemption year-dependent** — 16,576€ (2025) / 17,094€ (2026) per Art. 81 bis RIRPF
+- **Floating-point tolerance** — SMI comparison uses `+ 0.01` to handle IEEE 754 rounding (`(16576/12)*12 = 16576.000000000004`)
+- **foreignObject negative width** — Prevents SVG errors when mensual chart bars are very small (`Math.max(totalBarW - textPad*2, 0)`)
+- **Quick-pick buttons** — No longer open keyboard on click (removed `brutoInput.focus()`)
+
+### ✨ UI Improvements
+
+- **Mobile responsiveness** — All 3 tabs (SS, IRPF, Mensual) now work on small screens
+  - SS table split into 3 mobile-friendly tables (Trabajador, Empleador, Combinado)
+  - IRPF Mínimo personal table fits on mobile (3-column, `table-layout: auto`)
+  - Mensual view-toggle all 5 buttons fit in one row (`calc(20% - 6px)`)
+  - Mensual chart responsive viewBox (same pixel bar height on all screens)
+- **Tab icons replaced** — Descriptive SVGs (shield, document, bar-chart, pie-chart)
+- **Build tag removed** — Removed footer build tag
+- **Dynamic SS legend** — Legend items show/hide based on row types present
+- **Mínimo personal table** — € removed from headers, footer alignment fixed
+- **Distribución text** — Explanation text fills full width (removed 60ch max-width)
+- **foreignObject bar numbers** — Numbers display inside bars with overflow handling
+
+### 🧪 Testing
+
+- All 1,344 tests passing
+- 22 salary update tests passing
+- Verified with 30 salary values (10 to 500,000)
+
+### 📦 Changes
+
+- Cache versions: `styles.css?v=214`, `app.js?v=246`, `ui.js?v=178`
+- Removed duplicate monthly chart views (Trabajador, Ambos)
+- Removed `.ice-connector` CSS elements (replaced with SVG overlay)
+
+---
+
 ## [1.0.1] — 5 April 2026
 
 ### ✨ New Features
@@ -146,31 +184,6 @@ This project uses **Semantic Versioning** (MAJOR.MINOR.PATCH):
 
 ---
 
-## Future Roadmap
-
-### v1.1.0 — Q2 2026 (Planned)
-
-- [ ] Autónomos mode (self-employed calculator)
-- [ ] Export to PDF
-- [ ] Dark mode toggle
-- [ ] Multi-language support (ES/EN/CA)
-- [ ] Comparison tool (compare 2 salaries)
-
-### v1.2.0 — Q3 2026 (Planned)
-
-- [ ] Backend API (Node.js REST endpoints)
-- [ ] User accounts & scenario saving
-- [ ] Historical calculations storage
-- [ ] Email export
-
-### v2.0.0 — 2027 (Future Vision)
-
-- [ ] Mobile app (React Native)
-- [ ] Real-time government data sync
-- [ ] Advanced analytics & forecasting
-- [ ] Third-party calculator integrations
-
----
 
 ## Known Limitations (v1.0.0)
 
@@ -273,7 +286,6 @@ Free for personal, commercial, and educational use.
 ## Version History at a Glance
 
 ```
-2026-04-05 v1.0.1   📈 Salary adjustment feature
 2026-04-05 v1.0.0   🎉 First release (1344 tests, full documentation)
 ```
 
@@ -304,4 +316,4 @@ git push && ssh server.mario.gal "cd ~/IRPF/Calculadora-IRPF && git pull"
 
 ---
 
-*Last updated: 5 April 2026*
+*Last updated: 4 July 2026*

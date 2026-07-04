@@ -3,382 +3,841 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora IRPF + Seguridad Social 2026 — Andalucía</title>
-    <link rel="stylesheet" href="css/styles.css?v=20">
+    <meta name="description" content="Calculadora integral del IRPF y Seguridad Social para trabajadores en régimen general de Andalucía. Cálculo oficial 2025-2026.">
+    <title>€ Calculadora Salario Neto — Andalucía</title>
+
+    <script src="js/theme-bootstrap.js?v=174"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/styles.css?v=214">
 </head>
 <body>
 
-<header>
-    <h1>Calculadora IRPF + SS <span id="headerAnio">2026</span></h1>
-    <p>Régimen General &nbsp;·&nbsp; Comunidad Autónoma de Andalucía</p>
-</header>
-<div class="flag-bar"></div>
-
-<div class="container">
-
-    <!-- INPUT -->
-    <div class="card">
-        <h2>📋 Datos del trabajador</h2>
-        <p class="hint">Introduce tu salario bruto anual y selecciona las opciones que correspondan. Se calculará tu Seguridad Social, IRPF y salario neto.</p>
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="bruto">Salario bruto anual (€)</label>
-                <input type="text" id="bruto" placeholder="Ej: 30.000" inputmode="decimal" autocomplete="off">
-                <small class="field-error" id="brutoError"></small>
-            </div>
-            <div class="form-group">
-                <label for="anio">Año fiscal</label>
-                <input type="number" id="anio" value="2026" min="2023" max="2045" inputmode="numeric" autocomplete="off" oninput="const y=this.value||'2026';document.getElementById('headerAnio').textContent=y;document.title='Calculadora IRPF + Seguridad Social '+y+' — Andalucía';">
-                <small class="field-hint">MEI aplicable: 2023–2029 · C. Solidaridad: 2025–2045</small>
-            </div>
-            <div class="form-group">
-                <label for="pagas">Número de pagas</label>
-                <select id="pagas">
-                    <option value="12" selected>12 pagas</option>
-                    <option value="14">14 pagas</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="contrato">Tipo de contrato</label>
-                <select id="contrato">
-                    <option value="indefinido">Indefinido</option>
-                    <option value="temporal">Temporal</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="edad">Edad del contribuyente</label>
-                <select id="edad">
-                    <option value="menor65">Menor de 65 años</option>
-                    <option value="mayor65">Entre 65 y 74 años</option>
-                    <option value="mayor75">75 años o más</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="discapacidad">Discapacidad del contribuyente</label>
-                <select id="discapacidad">
-                    <option value="no">Sin discapacidad</option>
-                    <option value="33">Discapacidad ≥ 33%</option>
-                    <option value="65">Discapacidad ≥ 65%</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="hijos">Nº de descendientes</label>
-                <select id="hijos">
-                    <option value="0">Sin descendientes</option>
-                    <option value="1">1 descendiente</option>
-                    <option value="2">2 descendientes</option>
-                    <option value="3">3 descendientes</option>
-                    <option value="4">4 o más descendientes</option>
-                </select>
-                <small class="field-hint">Menores de 25 años o con discapacidad, con rentas &lt; 8.000 € (Art. 58)</small>
-            </div>
-            <div class="form-group">
-                <label for="ascendientes">Nº de ascendientes (&gt; 65 años o discapacidad)</label>
-                <select id="ascendientes">
-                    <option value="0">Sin ascendientes</option>
-                    <option value="1">1 ascendiente</option>
-                    <option value="2">2 ascendientes</option>
-                </select>
-                <small class="field-hint">Convivientes, con rentas &lt; 8.000 € (Art. 59)</small>
-            </div>
-            <div class="form-group">
-                <label for="grupo">Grupo de cotización</label>
-                <select id="grupo">
-                    <option value="1">Grupo 1 — Ingenieros y Licenciados</option>
-                    <option value="2">Grupo 2 — Ingenieros Técnicos, Peritos</option>
-                    <option value="3">Grupo 3 — Jefes Administrativos y de Taller</option>
-                    <option value="4" selected>Grupo 4 a 7 — Resto</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="cnae">CNAE empresa (opcional)</label>
-                <input type="text" id="cnae" placeholder="Ej: 6201" inputmode="numeric" autocomplete="off" maxlength="4">
-                <small class="field-hint" id="cnaeHint">Si se indica, se usará la tarifa AT y EP oficial. Si no, se aplica 2,00&nbsp;%.</small>
-            </div>
+<!-- ════════════════════════════════════════════════════════
+     TOP BAR
+     ════════════════════════════════════════════════════════ -->
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="brand" href="/" aria-label="IRPF Calculator">
+            <span class="brand-mark">€</span>
+            <span class="brand-text">IRPF<span class="brand-dot">.</span>calc</span>
+        </a>
+        <div class="topbar-meta">
+            <span class="topbar-pill">
+                <span class="dot"></span>
+                <span class="topbar-pill-full">Régimen General · Andalucía</span>
+                <span class="topbar-pill-short">Andalucía</span>
+            </span>
+            <a class="topbar-link" href="#results" id="linkResultados">Resultados</a>
+            <a class="topbar-link topbar-link-gh" href="https://github.com/MarioContrerasLara/Calculadora-IRPF" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Cambiar tema" title="Cambiar tema">
+                <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+                </svg>
+                <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
         </div>
-
-        <!-- BONUS PUNTUAL (collapsible) -->
-        <details class="especie-collapsible" id="bonusDetails">
-            <summary class="especie-toggle">🎯 Bonus puntuales <small>(opcional)</small></summary>
-            <div class="especie-body">
-                <p class="hint">Añade uno o varios bonus. Cada uno se suma al bruto anual para el IRPF y su base SS se aplica en el mes indicado.</p>
-                <div id="bonusList"></div>
-                <button type="button" class="btn-add-especie" onclick="addBonus()">＋ Añadir bonus</button>
-            </div>
-        </details>
-
-        <!-- ACTUALIZACIÓN SALARIAL (collapsible) -->
-        <details class="especie-collapsible" id="actualizacionDetails">
-            <summary class="especie-toggle">📈 Actualización salarial <small>(opcional)</small></summary>
-            <div class="especie-body">
-                <p class="hint">Añade cambios salariales durante el año. Especifica la fecha del cambio. Si no es el primer día del mes, el importe se calculará proporcionalmente.</p>
-                <div id="actualizacionList"></div>
-                <button type="button" class="btn-add-especie" onclick="addActualizacionSalarial()">＋ Añadir cambio salarial</button>
-            </div>
-        </details>
-
-        <!-- RETRIBUCIÓN EN ESPECIE (collapsible) -->
-        <details class="especie-collapsible" id="especieDetails">
-            <summary class="especie-toggle">🎁 Retribución en especie <small>(opcional)</small></summary>
-            <div class="especie-body">
-                <p class="hint">Importes mensuales (€/mes). Se anualizan automáticamente (×12). Cada concepto puede repartirse entre los dos tipos:<br>
-                    <strong>Adicional</strong> = la empresa lo paga por encima de tu bruto (coste extra).<br>
-                    <strong>Flexible</strong> = se descuenta de tu bruto (sin coste extra; la parte exenta reduce tu IRPF).</p>
-
-                <!-- Conceptos con exención fiscal (siempre visibles) -->
-                <h3 class="especie-section-title">Conceptos con exención fiscal</h3>
-
-                <div class="especie-dual-group">
-                    <label class="especie-dual-label">Seguro médico</label>
-                    <div class="especie-dual-inputs">
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-adicional">Adicional</span>
-                            <input type="text" id="espSeguroMedicoAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-flexible">Flexible</span>
-                            <input type="text" id="espSeguroMedicoFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
-                        </div>
-                    </div>
-                    <small class="field-hint">Exento hasta 500 €/persona/año (1.500 € si discapacidad). Art. 42.3.c)</small>
-                </div>
-                <div class="form-grid" style="margin-top:.6rem">
-                    <div class="form-group">
-                        <label for="espSeguroMedicoBenef">Nº beneficiarios seguro médico</label>
-                        <select id="espSeguroMedicoBenef">
-                            <option value="1" selected>Solo trabajador</option>
-                            <option value="2">Trabajador + 1 (cónyuge o hijo)</option>
-                            <option value="3">Trabajador + 2</option>
-                            <option value="4">Trabajador + 3</option>
-                            <option value="5">Trabajador + 4</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="especie-dual-group">
-                    <label class="especie-dual-label">Ticket restaurante</label>
-                    <label class="especie-mode-toggle">
-                        <input type="checkbox" id="espTicketRestModeToggle" onchange="toggleTicketMode('espTicketRest')">
-                        <span class="toggle-label">Anual</span>
-                    </label>
-                    <div class="especie-dual-inputs" id="espTicketRest-monthly">
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-adicional">Adicional</span>
-                            <input type="text" id="espTicketRestAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-flexible">Flexible</span>
-                            <input type="text" id="espTicketRestFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
-                        </div>
-                    </div>
-                    <div class="especie-dual-inputs" id="espTicketRest-annual" style="display:none">
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-adicional">Adicional</span>
-                            <input type="text" id="espTicketRestAdAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-flexible">Flexible</span>
-                            <input type="text" id="espTicketRestFlAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
-                        </div>
-                    </div>
-                    <small class="field-hint">Exento hasta 11 €/día laborable (Art. 42.3.a). El importe introducido se considera íntegramente exento.</small>
-                </div>
-
-                <div class="especie-dual-group">
-                    <label class="especie-dual-label">Ticket transporte</label>
-                    <label class="especie-mode-toggle">
-                        <input type="checkbox" id="espTransporteModeToggle" onchange="toggleTicketMode('espTransporte')">
-                        <span class="toggle-label">Anual</span>
-                    </label>
-                    <div class="especie-dual-inputs" id="espTransporte-monthly">
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-adicional">Adicional</span>
-                            <input type="text" id="espTransporteAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-flexible">Flexible</span>
-                            <input type="text" id="espTransporteFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
-                        </div>
-                    </div>
-                    <div class="especie-dual-inputs" id="espTransporte-annual" style="display:none">
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-adicional">Adicional</span>
-                            <input type="text" id="espTransporteAdAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
-                        </div>
-                        <div class="especie-dual-field">
-                            <span class="especie-dual-tag tag-flexible">Flexible</span>
-                            <input type="text" id="espTransporteFlAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
-                        </div>
-                    </div>
-                    <small class="field-hint">Exento hasta 1.500 €/año (136,36 €/mes). Art. 42.3.e)</small>
-                </div>
-
-                <!-- Otros conceptos en especie (sin exención, dinámicos) -->
-                <h3 class="especie-section-title">Otros conceptos en especie <small>(sin exención — tributan íntegramente)</small></h3>
-                <div id="espCustomList"></div>
-                <button type="button" class="btn-add-especie" onclick="addEspecieCustom()">＋ Añadir concepto</button>
-            </div>
-        </details>
-
-        <button class="btn-calc" onclick="calcular(true)">Calcular nómina</button>
     </div>
+</header>
 
-    <!-- RESULTS -->
-    <div class="results" id="results">
+<!-- ════════════════════════════════════════════════════════
+     HERO STRIP (compact intro)
+     ════════════════════════════════════════════════════════ -->
+<section class="hero-strip">
+    <div class="hero-strip-inner">
+        <div class="hero-eyebrow">
+            <span class="hero-eyebrow-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Datos oficiales BOE · 1.344 tests passing</span>
+            </span>
+        </div>
+        <h1 class="hero-title">
+            Tu <span class="accent">nómina</span> en un vistazo<span class="title-year"> · <span id="headerAnio">2026</span></span>
+        </h1>
+        <p class="hero-subtitle">
+            Cotizaciones, IRPF estatal y autonómico, retribución en especie y coste real para la empresa.
+        </p>
+    </div>
+</section>
 
-        <!-- 1. SS breakdown (trabajador + empleador) -->
-        <div class="tbl-section">
-            <h3>Cotizaciones a la Seguridad Social</h3>
-            <div class="ss-legend">
-                <span class="ss-leg-item"><span class="ss-leg-dot" style="background:#558b2f"></span> Compartido</span>
-                <span class="ss-leg-item"><span class="ss-leg-dot" style="background:#6a1b9a"></span> Solo empleador</span>
-                <span class="ss-leg-item" id="legSolidaridad" style="display:none"><span class="ss-leg-dot" style="background:#00897b"></span> Cuota solidaridad</span>
+<!-- ════════════════════════════════════════════════════════
+     DASHBOARD — Two-column: Form (left, sticky) + Results (right)
+     ════════════════════════════════════════════════════════ -->
+<main class="dashboard">
+
+    <!-- ── FORM PANEL (left, sticky on desktop) ──────────────── -->
+    <aside class="form-panel" id="calculadora">
+
+        <div class="form-card form-card-hero">
+            <div class="form-card-label">Salario bruto anual</div>
+            <div class="hero-input-wrap">
+                <input
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    id="bruto"
+                    class="hero-input-field"
+                    placeholder="30000"
+                >
+                <span class="hero-input-suffix">€</span>
             </div>
-            <div class="tbl-scroll"><table class="tbl-ss-combined">
-                <thead>
-                    <tr>
-                        <th rowspan="2">Concepto</th>
-                        <th rowspan="2">Base mensual</th>
-                        <th colspan="2" class="text-center">Trabajador</th>
-                        <th colspan="2" class="text-center">Empleador</th>
-                        <th colspan="2" class="text-center">Combinado</th>
-                    </tr>
-                    <tr>
-                        <th>Tipo %</th>
-                        <th class="text-right">Cuota anual</th>
-                        <th>Tipo %</th>
-                        <th class="text-right">Cuota anual</th>
-                        <th>Tipo %</th>
-                        <th class="text-right">Cuota anual</th>
-                    </tr>
-                </thead>
-                <tbody id="tbSS"></tbody>
-                <tfoot id="tfSS"></tfoot>
-            </table></div>
+            <div class="hero-input-meta">
+                <small class="field-error" id="brutoError"></small>
+                <div class="quick-picks" role="group" aria-label="Salarios de referencia">
+                    <button type="button" class="quick-pick" data-value="17094">17.094 €</button>
+                    <button type="button" class="quick-pick" data-value="22000">22.000 €</button>
+                    <button type="button" class="quick-pick" data-value="30000">30.000 €</button>
+                    <button type="button" class="quick-pick" data-value="45000">45.000 €</button>
+                    <button type="button" class="quick-pick" data-value="60000">60.000 €</button>
+                </div>
+            </div>
         </div>
 
-        <!-- 2. Determinación de la base liquidable -->
-        <div class="tbl-section">
-            <h3>Determinación de la base liquidable <span class="badge badge-green">IRPF</span></h3>
-            <div class="tbl-scroll"><table>
-                <thead><tr><th>Concepto</th><th class="text-right">Importe (€)</th></tr></thead>
-                <tbody id="tbFlow"></tbody>
-            </table></div>
+        <div class="form-card">
+            <div class="form-card-head">
+                <span class="form-card-title">Tu situación</span>
+            </div>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="anio" class="input-label">Año fiscal</label>
+                    <input
+                        type="text"
+                        id="anio"
+                        class="input"
+                        value="2026"
+                        min="2023"
+                        max="2045"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        pattern="[0-9]{4}"
+                        maxlength="4"
+                    >
+                </div>
+                <div class="field">
+                    <label for="pagas" class="input-label">Pagas</label>
+                    <select id="pagas" class="input">
+                        <option value="12" selected>12 pagas</option>
+                        <option value="14">14 pagas</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="contrato" class="input-label">Contrato</label>
+                    <select id="contrato" class="input">
+                        <option value="indefinido">Indefinido</option>
+                        <option value="temporal">Temporal</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="grupo" class="input-label">Grupo cotización</label>
+                    <select id="grupo" class="input">
+                        <option value="1">G1 — Ingenieros</option>
+                        <option value="2">G2 — Ing. técnicos</option>
+                        <option value="3">G3 — Jefes admin.</option>
+                        <option value="4" selected>G4–G7 — Resto</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="edad" class="input-label">Edad</label>
+                    <select id="edad" class="input">
+                        <option value="menor65">Menor de 65 años</option>
+                        <option value="mayor65">65 – 74 años</option>
+                        <option value="mayor75">75 años o más</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="discapacidad" class="input-label">Discapacidad</label>
+                    <select id="discapacidad" class="input">
+                        <option value="no">Sin discapacidad</option>
+                        <option value="33">≥ 33 %</option>
+                        <option value="65">≥ 65 %</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="hijos" class="input-label">Descendientes</label>
+                    <select id="hijos" class="input">
+                        <option value="0">Sin descendientes</option>
+                        <option value="1">1 descendiente</option>
+                        <option value="2">2 descendientes</option>
+                        <option value="3">3 descendientes</option>
+                        <option value="4">4 o más</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="ascendientes" class="input-label">Ascendientes</label>
+                    <select id="ascendientes" class="input">
+                        <option value="0">Sin ascendientes</option>
+                        <option value="1">1 ascendiente</option>
+                        <option value="2">2 ascendientes</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
-        <!-- 3. Mínimo personal y familiar -->
-        <div class="tbl-section">
-            <h3>Mínimo personal y familiar <span class="badge badge-state">Estatal</span> <span class="badge badge-auto">Autonómico</span></h3>
-            <div class="tbl-scroll"><table>
-                <thead><tr><th>Concepto</th><th class="text-right">Estatal (€)</th><th class="text-right">Autonómico (€)</th></tr></thead>
-                <tbody id="tbMin"></tbody>
-                <tfoot><tr><td>Total mínimo</td><td class="text-right" id="tfMinEst">—</td><td class="text-right" id="tfMinAut">—</td></tr></tfoot>
-            </table></div>
+        <details class="form-card form-advanced" id="advancedDetails">
+            <summary class="form-advanced-toggle">
+                <span class="form-advanced-toggle-left">
+                    <span class="form-advanced-icon-box" aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </span>
+                    <span class="form-advanced-label">Avanzado</span>
+                    <span class="form-advanced-meta">Bonus · Actualización · Especie · CNAE</span>
+                </span>
+                <span class="form-advanced-count" id="advancedCount" data-count="0">0</span>
+            </summary>
+
+            <div class="form-advanced-body">
+                <div class="tabs" role="tablist" aria-label="Configuración avanzada">
+                    <button class="tab active" data-tab="bonus" role="tab" aria-selected="true">
+                        <span>Bonus</span>
+                    </button>
+                    <button class="tab" data-tab="actualizacion" role="tab" aria-selected="false">
+                        <span>Actualización</span>
+                    </button>
+                    <button class="tab" data-tab="especie" role="tab" aria-selected="false">
+                        <span>Especie</span>
+                    </button>
+                    <button class="tab" data-tab="cnae" role="tab" aria-selected="false">
+                        <span>CNAE</span>
+                    </button>
+                </div>
+
+                <!-- Tab: Bonus -->
+                <div class="tab-panel active" data-panel="bonus" role="tabpanel">
+                    <div class="panel-hint">
+                        Añade uno o varios <strong>bonus puntuales</strong>. Se suman al bruto anual para el IRPF y su base SS se aplica en el mes indicado.
+                    </div>
+                    <div id="bonusList"></div>
+                    <button type="button" id="btnAddBonus" class="btn btn-secondary" style="margin-top: var(--s-3)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Añadir bonus</span>
+                    </button>
+                </div>
+
+                <!-- Tab: Actualización salarial -->
+                <div class="tab-panel" data-panel="actualizacion" role="tabpanel">
+                    <div class="panel-hint">
+                        Añade <strong>cambios salariales</strong> durante el año. Especifica la fecha del cambio. Si no es el primer día del mes, el importe se calcula proporcionalmente.
+                    </div>
+                    <div id="actualizacionList"></div>
+                    <button type="button" id="btnAddActualizacion" class="btn btn-secondary" style="margin-top: var(--s-3)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span>Añadir cambio salarial</span>
+                    </button>
+                </div>
+
+                <!-- Tab: Especie -->
+                <div class="tab-panel" data-panel="especie" role="tabpanel">
+                    <div class="panel-hint">
+                        Importes <strong>mensuales (€/mes)</strong> que se anualizan automáticamente (×12). Cada concepto puede repartirse entre los dos tipos:
+                        <strong>Adicional</strong> = la empresa lo paga por encima de tu bruto (coste extra).
+                        <strong>Flexible</strong> = se descuenta de tu bruto (sin coste extra; la parte exenta reduce tu IRPF).
+                    </div>
+
+                    <h4 class="sub-section-title" style="margin: var(--s-2) 0 var(--s-4)">Conceptos con exención fiscal</h4>
+
+                    <!-- Seguro médico -->
+                    <div class="especie-group">
+                        <div class="especie-group-head">
+                            <label class="input-label">Seguro médico</label>
+                            <span class="especie-hint">Exento hasta 500 €/persona/año · 1.500 € si discapacidad · Art. 42.3.c</span>
+                        </div>
+                        <div class="dual-input">
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-blue">Adicional</span>
+                                <input type="text" id="espSeguroMedicoAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                            </div>
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-orange">Flexible</span>
+                                <input type="text" id="espSeguroMedicoFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="field" style="margin-top: var(--s-4)">
+                            <label for="espSeguroMedicoBenef" class="input-label">Beneficiarios</label>
+                            <select id="espSeguroMedicoBenef" class="input">
+                                <option value="1" selected>Solo trabajador</option>
+                                <option value="2">Trabajador + 1 (cónyuge o hijo)</option>
+                                <option value="3">Trabajador + 2</option>
+                                <option value="4">Trabajador + 3</option>
+                                <option value="5">Trabajador + 4</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Ticket restaurante -->
+                    <div class="especie-group">
+                        <div class="especie-group-head">
+                            <label class="input-label">Ticket restaurante</label>
+                            <label class="mode-toggle">
+                                <input type="checkbox" id="espTicketRestModeToggle">
+                                <span class="mode-toggle-switch"></span>
+                                <span>Anual</span>
+                            </label>
+                        </div>
+                        <div class="especie-hint" style="text-align: left; max-width: 100%; margin-bottom: var(--s-3)">Exento hasta 11 €/día laborable · Art. 42.3.a</div>
+                        <div class="dual-input" id="espTicketRest-monthly">
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-blue">Adicional</span>
+                                <input type="text" id="espTicketRestAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                            </div>
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-orange">Flexible</span>
+                                <input type="text" id="espTicketRestFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="dual-input" id="espTicketRest-annual" style="display: none">
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-blue">Adicional</span>
+                                <input type="text" id="espTicketRestAdAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                            </div>
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-orange">Flexible</span>
+                                <input type="text" id="espTicketRestFlAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ticket transporte -->
+                    <div class="especie-group">
+                        <div class="especie-group-head">
+                            <label class="input-label">Ticket transporte</label>
+                            <label class="mode-toggle">
+                                <input type="checkbox" id="espTransporteModeToggle">
+                                <span class="mode-toggle-switch"></span>
+                                <span>Anual</span>
+                            </label>
+                        </div>
+                        <div class="especie-hint" style="text-align: left; max-width: 100%; margin-bottom: var(--s-3)">Exento hasta 1.500 €/año (136,36 €/mes) · Art. 42.3.e</div>
+                        <div class="dual-input" id="espTransporte-monthly">
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-blue">Adicional</span>
+                                <input type="text" id="espTransporteAd" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                            </div>
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-orange">Flexible</span>
+                                <input type="text" id="espTransporteFl" placeholder="€/mes" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="dual-input" id="espTransporte-annual" style="display: none">
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-blue">Adicional</span>
+                                <input type="text" id="espTransporteAdAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                            </div>
+                            <div class="dual-field">
+                                <span class="dual-tag dual-tag-orange">Flexible</span>
+                                <input type="text" id="espTransporteFlAnnual" placeholder="€/año" inputmode="decimal" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="sub-section-title" style="margin: var(--s-6) 0 var(--s-4)">Otros conceptos en especie <span class="form-advanced-meta" style="margin-left: 6px">— sin exención, tributan íntegros</span></h4>
+
+                    <div class="especie-group especie-custom-group">
+                        <div class="especie-group-head">
+                            <span class="input-label">Conceptos añadidos</span>
+                            <span class="especie-hint">Marca <strong>Monetario</strong> si es dinero (no permite distinguir Ad./Fl.)</span>
+                        </div>
+                        <div id="espCustomList" class="especie-custom-list"></div>
+                        <button type="button" id="btnAddEspecie" class="btn btn-secondary btn-add-especie">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <span>Añadir concepto</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab: CNAE -->
+                <div class="tab-panel" data-panel="cnae" role="tabpanel">
+                    <div class="panel-hint">
+                        Si tu empresa tiene un <strong>CNAE específico</strong>, indícalo para usar la tarifa oficial de Accidentes de Trabajo y Enfermedades Profesionales. Si no, se aplica el tipo por defecto del 2,00 %.
+                    </div>
+                    <div class="field">
+                        <label for="cnae" class="input-label">CNAE empresa</label>
+                        <input type="text" id="cnae" class="input" placeholder="Ej: 6201" inputmode="numeric" autocomplete="off" maxlength="4">
+                        <small class="field-hint" id="cnaeHint">Si se indica, se usará la tarifa AT y EP oficial. Si no, se aplica 2,00 %.</small>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <button id="btnCalculate" class="btn btn-primary btn-calculate" type="button">
+            <span>Calcular nómina</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+    </aside>
+
+    <!-- ── RESULTS PANEL (right, scrollable) ──────────────────── -->
+    <section class="results" id="results">
+
+        <!-- Welcome state: shown by default, hidden once data is calculated -->
+        <div class="results-welcome" id="resultsWelcome" aria-hidden="false">
+            <div class="results-welcome-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                    <line x1="8" y1="6" x2="16" y2="6"></line>
+                    <line x1="8" y1="10" x2="10" y2="10"></line>
+                    <line x1="13" y1="10" x2="16" y2="10"></line>
+                    <line x1="8" y1="14" x2="10" y2="14"></line>
+                    <line x1="13" y1="14" x2="16" y2="14"></line>
+                    <line x1="8" y1="18" x2="10" y2="18"></line>
+                    <line x1="13" y1="18" x2="16" y2="18"></line>
+                </svg>
+            </div>
+            <h2 class="results-welcome-title">Tu nómina, al detalle</h2>
+            <p class="results-welcome-sub">
+                Configura tu situación en el panel de la izquierda y pulsa
+                <strong>Calcular nómina</strong> para ver el desglose completo:
+                cotizaciones, IRPF estatal y autonómico, pagas mensuales y coste real para la empresa.
+            </p>
+            <div class="results-welcome-hint">
+                <span class="dot"></span>
+                <span>Tip: empieza con <strong>30.000 €</strong> para ver un ejemplo</span>
+            </div>
         </div>
 
-        <!-- 4. IRPF estatal -->
-        <div class="tbl-section">
-            <h3>Desglose IRPF estatal <span class="badge badge-state">Art. 63 Ley IRPF</span></h3>
-            <div class="tbl-scroll"><table>
-                <thead><tr><th>Tramo</th><th>Base tramo</th><th>Tipo</th><th class="text-right">Cuota</th></tr></thead>
-                <tbody id="tbEst"></tbody>
-                <tfoot id="tfEst"></tfoot>
-            </table></div>
+        <!-- Result hero: BIG centerpiece -->
+        <div class="result-hero" id="resultHero">
+            <div class="result-hero-grid">
+                <div class="result-hero-main">
+                    <div class="result-hero-eyebrow">
+                        <span class="pulse"></span>
+                        <span>Salario neto anual</span>
+                    </div>
+                    <div class="result-hero-value" id="resultHeroNeto">
+                        <span id="resultHeroNetoNum">—</span>
+                    </div>
+                    <div class="result-hero-sub">
+                        <span class="result-hero-sub-item">
+                            <span class="result-hero-sub-lbl">Neto mes</span>
+                            <span id="resultHeroNetoMes">—</span>
+                        </span>
+                        <span class="divider">·</span>
+                        <span class="result-hero-sub-item">
+                            <span class="result-hero-sub-lbl">Tipo efectivo</span>
+                            <span id="resultHeroTipoEf">—</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="result-hero-side">
+                    <div class="result-hero-side-item">
+                        <span class="lbl">Bruto anual</span>
+                        <span class="val" id="resultHeroBruto">—</span>
+                    </div>
+                    <div class="result-hero-side-item">
+                        <span class="lbl">IRPF total</span>
+                        <span class="val is-tax" id="resultHeroIrpf">—</span>
+                    </div>
+                    <div class="result-hero-side-item">
+                        <span class="lbl">Seg. Social</span>
+                        <span class="val is-tax" id="resultHeroSS">—</span>
+                    </div>
+                    <div class="result-hero-side-item">
+                        <span class="lbl">Coste empresa</span>
+                        <span class="val is-cost" id="resultHeroCoste">—</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- 5. IRPF autonómico -->
-        <div class="tbl-section">
-            <h3>Desglose IRPF autonómico — Andalucía <span class="badge badge-auto">Ley 5/2021</span></h3>
-            <div class="tbl-scroll"><table>
-                <thead><tr><th>Tramo</th><th>Base tramo</th><th>Tipo</th><th class="text-right">Cuota</th></tr></thead>
-                <tbody id="tbAut"></tbody>
-                <tfoot id="tfAut"></tfoot>
-            </table></div>
-        </div>
-
-        <!-- 6. IRPF resumen combinado -->
-        <div class="tbl-section">
-            <h3>Resumen IRPF <span class="badge badge-state">Estatal</span> + <span class="badge badge-auto">Autonómico</span></h3>
-            <div class="tbl-scroll"><table>
-                <thead><tr><th>Componente</th><th class="text-right">Cuota (€)</th><th class="text-right">Tipo efectivo</th></tr></thead>
-                <tbody id="tbIrpfResumen"></tbody>
-                <tfoot id="tfIrpfResumen"></tfoot>
-            </table></div>
-        </div>
-
-        <!-- 7. Resumen anual + mensual -->
+        <!-- Legacy hero-grid (app.js still renders here) -->
         <div class="hero-grid" id="heroGrid"></div>
 
-        <div class="card">
-            <h2>📆 Desglose mensual</h2>
-            <p class="hint" id="monthlyHint"></p>
-            <div class="monthly-grid" id="monthlyGrid"></div>
-        </div>
-
-        <!-- 8. Pie chart: salary breakdown -->
-        <div class="chart-wrap">
-            <h3>Distribución del salario bruto</h3>
-            <div class="pie-container">
-                <svg id="pieChart" viewBox="0 0 200 200" class="pie-svg"></svg>
-                <div class="pie-legend" id="pieLegend"></div>
-            </div>
-        </div>
-
-        <!-- 9. Iceberg diagram -->
-        <div class="card">
-            <h2>⛰️ Desglose del salario</h2>
-            <p class="hint">Lo que recibes vs. lo oculto: impuestos del trabajador y cotizaciones del empleador.</p>
-        </div>
-        <div class="iceberg-scene" id="icebergWrap">
-            <div class="ice-scene">
-                <!-- Water background -->
-                <div class="ice-water-bg"></div>
-                <!-- Waterline shimmer -->
-                <div class="ice-waterline"></div>
-                <!-- Iceberg SVG: 3 zones in one shape -->
-                <svg class="ice-svg" viewBox="0 0 300 440" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                        <linearGradient id="tipGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#ffffff"/>
-                            <stop offset="100%" stop-color="#cddde9"/>
-                        </linearGradient>
-                        <clipPath id="bodyClip">
-                            <polygon points="20,195 10,220 6,260 10,300 22,340 44,375 75,405 110,425 150,440 190,425 225,405 256,375 278,340 290,300 294,260 290,220 280,195"/>
-                        </clipPath>
-                    </defs>
-                    <!-- Above-water triangle (tip) -->
-                    <polygon points="150,0 280,195 20,195" fill="url(#tipGrad)"/>
-                    <!-- Below-water body (clipped to iceberg shape) -->
-                    <g clip-path="url(#bodyClip)">
-                        <rect id="iceWorkerRect" x="0" y="195" width="300" height="122" fill="rgba(90,185,215,0.9)"/>
-                        <rect id="iceEmployerRect" x="0" y="317" width="300" height="123" fill="rgba(175,145,30,0.85)"/>
-                    </g>
+        <!-- Tabs: switch between breakdown views -->
+        <div class="results-tabs" role="tablist" aria-label="Desglose">
+            <button class="results-tab active" data-tab="ss" role="tab" aria-selected="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                 </svg>
-                <!-- Flag -->
-                <div class="ice-flag">🇪🇸</div>
-                <!-- Labels -->
-                <div class="ice-label ice-label-net" id="iceZoneNet"></div>
-                <div class="ice-label ice-label-employee" id="iceZoneEmployee"></div>
-                <div class="ice-label ice-label-employer" id="iceZoneEmployer"></div>
-                <!-- Whale silhouette -->
-                <div class="ice-whale"></div>
-            </div>
-            <!-- Summary cards -->
-            <div class="ice-summary" id="iceSummary"></div>
+                <span>Seguridad Social</span>
+            </button>
+            <button class="results-tab" data-tab="irpf" role="tab" aria-selected="false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="9" y1="13" x2="15" y2="13"></line>
+                    <line x1="9" y1="17" x2="15" y2="17"></line>
+                </svg>
+                <span>IRPF</span>
+            </button>
+            <button class="results-tab" data-tab="mensual" role="tab" aria-selected="false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="12" width="4" height="9" rx="1"></rect>
+                    <rect x="10" y="7" width="4" height="14" rx="1"></rect>
+                    <rect x="17" y="3" width="4" height="18" rx="1"></rect>
+                </svg>
+                <span>Mensual</span>
+            </button>
+            <button class="results-tab" data-tab="distribucion" role="tab" aria-selected="false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                </svg>
+                <span>Distribución</span>
+            </button>
         </div>
 
+        <!-- Tab: Seguridad Social -->
+        <div class="results-panel active" data-panel="ss" role="tabpanel">
+            <section class="tbl-section">
+                <header class="tbl-section-head">
+                    <h3>Cotizaciones a la Seguridad Social</h3>
+                    <div class="meta">
+                        <span class="ss-leg-item"><span class="ss-leg-dot" style="background: var(--accent)"></span> Compartido</span>
+                        <span class="ss-leg-item"><span class="ss-leg-dot" style="background: var(--info)"></span> Trabajador</span>
+                        <span class="ss-leg-item"><span class="ss-leg-dot" style="background: var(--chart-emp)"></span> Empleador</span>
+                        <span class="ss-leg-item" id="legSolidaridad" style="display: none"><span class="ss-leg-dot" style="background: var(--chart-flex)"></span> Solidaridad</span>
+                    </div>
+                </header>
+                <div class="tbl-scroll">
+                    <table class="tbl-ss-combined">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Concepto</th>
+                                <th rowspan="2">Base mensual</th>
+                                <th colspan="2" class="text-center">Trabajador</th>
+                                <th colspan="2" class="text-center">Empleador</th>
+                                <th colspan="2" class="text-center">Combinado</th>
+                            </tr>
+                            <tr>
+                                <th>Tipo %</th>
+                                <th class="text-right">Cuota anual</th>
+                                <th>Tipo %</th>
+                                <th class="text-right">Cuota anual</th>
+                                <th>Tipo %</th>
+                                <th class="text-right">Cuota anual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbSS"></tbody>
+                        <tfoot id="tfSS"></tfoot>
+                    </table>
+                </div>
+                <!-- Mobile: 3 split tables -->
+                <div class="ss-mobile-tables">
+                    <div class="tbl-scroll">
+                        <h4 class="ss-mobile-title"><span class="ss-leg-dot" style="background: var(--info)"></span> Trabajador</h4>
+                        <div class="ss-mobile-base" id="ssMobileBaseW"></div>
+                        <table class="tbl-ss-mobile"><thead><tr><th>Concepto</th><th>Tipo %</th><th class="text-right">Cuota anual</th></tr></thead><tbody id="tbSSw"></tbody><tfoot id="tfSSw"></tfoot></table>
+                    </div>
+                    <div class="tbl-scroll">
+                        <h4 class="ss-mobile-title"><span class="ss-leg-dot" style="background: var(--chart-emp)"></span> Empleador</h4>
+                        <div class="ss-mobile-base" id="ssMobileBaseE"></div>
+                        <table class="tbl-ss-mobile"><thead><tr><th>Concepto</th><th>Tipo %</th><th class="text-right">Cuota anual</th></tr></thead><tbody id="tbSSe"></tbody><tfoot id="tfSSe"></tfoot></table>
+                    </div>
+                    <div class="tbl-scroll">
+                        <h4 class="ss-mobile-title"><span class="ss-leg-dot" style="background: var(--accent)"></span> Combinado</h4>
+                        <div class="ss-mobile-base" id="ssMobileBaseC"></div>
+                        <table class="tbl-ss-mobile"><thead><tr><th>Concepto</th><th>Tipo %</th><th class="text-right">Cuota anual</th></tr></thead><tbody id="tbSSc"></tbody><tfoot id="tfSSc"></tfoot></table>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-    </div>
+        <!-- Tab: IRPF (multiple tables) -->
+        <div class="results-panel" data-panel="irpf" role="tabpanel">
+            <section class="tbl-section">
+                <header class="tbl-section-head">
+                    <h3>Determinación de la base liquidable <span class="badge badge-green" style="margin-left: var(--s-2)">IRPF</span></h3>
+                </header>
+                <div class="tbl-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>Concepto</th><th class="text-right">Importe (€)</th></tr>
+                        </thead>
+                        <tbody id="tbFlow"></tbody>
+                    </table>
+                </div>
+            </section>
 
-</div>
+            <section class="tbl-section">
+                <header class="tbl-section-head">
+                    <h3>Mínimo personal y familiar <span class="badge badge-state" style="margin-left: var(--s-2)">Estatal</span> <span class="badge badge-auto">Autonómico</span></h3>
+                </header>
+                <div class="tbl-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th class="text-right">Estatal</th>
+                                <th class="text-right">Autonómico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbMin"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total mínimo</td>
+                                <td class="text-right" id="tfMinEst">—</td>
+                                <td class="text-right" id="tfMinAut">—</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
 
+            <section class="tbl-section">
+                <header class="tbl-section-head">
+                    <h3>Desglose IRPF estatal <span class="badge badge-state">Art. 63 Ley IRPF</span></h3>
+                </header>
+                <div class="tbl-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tramo</th>
+                                <th>Base tramo</th>
+                                <th>Tipo</th>
+                                <th class="text-right">Cuota</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbEst"></tbody>
+                        <tfoot id="tfEst"></tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tbl-section">
+                <header class="tbl-section-head">
+                    <h3>Desglose IRPF autonómico — Andalucía <span class="badge badge-auto">Ley 5/2021</span></h3>
+                </header>
+                <div class="tbl-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tramo</th>
+                                <th>Base tramo</th>
+                                <th>Tipo</th>
+                                <th class="text-right">Cuota</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbAut"></tbody>
+                        <tfoot id="tfAut"></tfoot>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tbl-section">
+                <header class="tbl-section-head">
+                    <h3>Resumen IRPF <span class="badge badge-state">Estatal</span> <span class="badge badge-auto">Autonómico</span></h3>
+                </header>
+                <div class="tbl-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Componente</th>
+                                <th class="text-right">Cuota (€)</th>
+                                <th class="text-right">Tipo efectivo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbIrpfResumen"></tbody>
+                        <tfoot id="tfIrpfResumen"></tfoot>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab: Mensual -->
+        <div class="results-panel" data-panel="mensual" role="tabpanel">
+            <section class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Desglose mensual</h2>
+                    <p class="card-hint" id="monthlyHint"></p>
+                </div>
+                <div class="monthly-grid" id="monthlyGrid"></div>
+            </section>
+
+            <section class="chart-wrap monthly-chart-wrap">
+                <div class="monthly-chart-head">
+                    <h3>Lo que cobras cada mes (neto) <span style="display:inline-block;vertical-align:middle;width:12px;height:12px;border-radius:2px;background:#10b981;margin-left:6px"></span></h3>
+                    <div class="view-toggle-group" id="monthlyViewToggle" role="tablist" aria-label="Métrica del gráfico mensual">
+                        <button type="button" class="view-toggle-btn is-active" data-view="neto" role="tab" aria-selected="true">Neto</button>
+                        <button type="button" class="view-toggle-btn" data-view="bruto" role="tab" aria-selected="false">Bruto</button>
+                        <button type="button" class="view-toggle-btn" data-view="total" role="tab" aria-selected="false">Total</button>
+                        <button type="button" class="view-toggle-btn" data-view="tax" role="tab" aria-selected="false">Impuestos</button>
+                        <button type="button" class="view-toggle-btn" data-view="employer" role="tab" aria-selected="false">Empresa</button>
+                    </div>
+                </div>
+                <div class="monthly-chart" id="monthlyChart" style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px;"></div>
+                <div class="chart-indicators" id="monthlyChartIndicators" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;padding:8px 12px;background:var(--bg-subtle);border-radius:6px;font-size:12px;color:var(--text-2);">
+                    <span style="font-weight:600;color:var(--text-1);">Marcas del gráfico:</span>
+                </div>
+                <div class="color-scheme-legend" id="monthlyChartLegend" style="margin-top:20px;padding:16px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;">
+                    <div class="color-scheme-legend-title" style="font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">Esquema de colores</div>
+                    <div class="color-scheme-legend-grid">
+                        <div class="color-scheme-item" data-key="neto" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#10b981;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">Neto</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Lo que cobras al final de mes.</span></div>
+                        </div>
+                        <div class="color-scheme-item" data-key="ss" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#fb923c;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">SS trabajador</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Tu cotización a la Seguridad Social.</span></div>
+                        </div>
+                        <div class="color-scheme-item" data-key="irpf_est" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#60a5fa;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">IRPF estatal</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Parte del IRPF que va al Estado.</span></div>
+                        </div>
+                        <div class="color-scheme-item" data-key="irpf_aut" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#f472b6;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">IRPF autonómico</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Parte del IRPF que va a la Junta de Andalucía.</span></div>
+                        </div>
+                        <div class="color-scheme-item" data-key="flex" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#22d3ee;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">Especie flexible</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Beneficios sociales (seguro médico, tickets, etc.).</span></div>
+                        </div>
+                        <div class="color-scheme-item" data-key="empSS" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#a78bfa;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">SS empresa</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Cotización que paga tu empleador por ti a la SS.</span></div>
+                        </div>
+                        <div class="color-scheme-item" data-key="espAd" style="display:grid;grid-template-columns:20px 1fr;gap:10px;align-items:start;padding:10px 12px;min-height:46px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border);">
+                            <span style="width:16px;height:16px;border-radius:50%;background:#2dd4bf;display:block;"></span>
+                            <div><strong style="display:block;color:var(--text-1);font-size:12px;font-weight:600;line-height:1.3;">Especie adicional</strong><span style="display:block;color:var(--text-2);font-size:11px;line-height:1.35;margin-top:3px;">Retribución en especie (no en nómina) que paga la empresa.</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tab: Distribución (pie + iceberg) -->
+        <div class="results-panel" data-panel="distribucion" role="tabpanel">
+            <section class="chart-wrap">
+                <h3>Distribución del salario bruto</h3>
+                <div class="pie-container">
+                    <svg id="pieChart" viewBox="0 0 200 200" class="pie-svg"></svg>
+                    <div class="pie-legend" id="pieLegend"></div>
+                </div>
+            </section>
+
+            <!-- Iceberg — only visible when this tab is active -->
+            <section class="iceberg-section">
+                <header class="section-head">
+                    <h2>Lo que recibes vs. lo que cuesta</h2>
+                    <p>Tu salario neto es solo la punta del iceberg. El resto son impuestos del trabajador y cotizaciones que paga tu empleador por ti.</p>
+                </header>
+                <div class="iceberg-scene" id="icebergWrap">
+                    <!-- Clouds flanking the iceberg (self-contained SVG, no hotlink) -->
+                    <svg class="ice-cloud ice-cloud-left" viewBox="0 0 120 60" aria-hidden="true">
+                        <path d="M 18,46 Q 8,46 6,36 Q 4,24 16,22 Q 18,10 32,10 Q 46,10 50,22 Q 56,16 66,18 Q 78,20 78,32 Q 90,30 94,40 Q 96,50 86,52 L 24,52 Q 18,52 18,46 Z" fill="currentColor"/>
+                    </svg>
+                    <svg class="ice-cloud ice-cloud-right" viewBox="0 0 120 60" aria-hidden="true">
+                        <path d="M 18,46 Q 8,46 6,36 Q 4,24 16,22 Q 18,10 32,10 Q 46,10 50,22 Q 56,16 66,18 Q 78,20 78,32 Q 90,30 94,40 Q 96,50 86,52 L 24,52 Q 18,52 18,46 Z" fill="currentColor"/>
+                    </svg>
+
+                    <div class="ice-scene">
+                        <svg class="ice-svg" viewBox="0 0 300 440" preserveAspectRatio="xMidYMid meet">
+                            <defs>
+                                <linearGradient id="tipGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#ffffff"/>
+                                    <stop offset="100%" stop-color="#dbeafe"/>
+                                </linearGradient>
+                                <linearGradient id="workerGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#7dd3fc"/>
+                                    <stop offset="100%" stop-color="#0ea5e9"/>
+                                </linearGradient>
+                                <linearGradient id="empGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#7c3aed"/>
+                                    <stop offset="100%" stop-color="#4c1d95"/>
+                                </linearGradient>
+                                <radialGradient id="tipHighlight" cx="0.5" cy="0.3" r="0.7">
+                                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+                                    <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+                                </radialGradient>
+                                <clipPath id="bodyClip">
+                                    <path id="iceBodyClipPath" d="M 50,170 L 38,200 L 22,240 L 8,280 L 5,290 L 8,320 L 22,360 L 50,395 L 85,420 L 140,440 L 210,425 L 255,400 L 285,365 L 293,325 L 295,290 L 293,260 L 290,225 L 275,195 L 250,170 Z"/>
+                                </clipPath>
+                                <clipPath id="tipClip">
+                                    <path id="iceTipClipPath" d="M 50,170 L 60,135 L 78,108 L 95,128 L 115,98 L 140,68 L 155,82 L 175,38 L 195,72 L 215,98 L 235,128 L 250,150 L 250,170 Z"/>
+                                </clipPath>
+                            </defs>
+
+                            <!-- Tip: irregular iceberg silhouette with multiple peaks -->
+                            <path id="iceTipPath" d="M 50,170 L 60,135 L 78,108 L 95,128 L 115,98 L 140,68 L 155,82 L 175,38 L 195,72 L 215,98 L 235,128 L 250,150 L 250,170 Z"
+                                  fill="url(#tipGrad)" stroke="#bae6fd" stroke-width="1.2" stroke-linejoin="round"/>
+
+                            <!-- Soft highlight on the tip to suggest 3D form -->
+                            <g clip-path="url(#tipClip)">
+                                <ellipse id="iceTipHighlight" cx="155" cy="55" rx="80" ry="55" fill="url(#tipHighlight)"/>
+                            </g>
+
+                            <!-- Ridge lines on the tip to suggest ice texture -->
+                            <g clip-path="url(#tipClip)" opacity="0.55">
+                                <path class="ice-tip-ridge" d="M 78,165 L 86,128 L 95,118" stroke="#ffffff" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+                                <path class="ice-tip-ridge" d="M 115,165 L 122,108 L 132,82" stroke="#ffffff" stroke-width="1" fill="none" stroke-linecap="round"/>
+                                <path class="ice-tip-ridge" d="M 140,165 L 148,95 L 155,75" stroke="#ffffff" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+                                <path class="ice-tip-ridge" d="M 175,165 L 180,72 L 188,55" stroke="#ffffff" stroke-width="1" fill="none" stroke-linecap="round"/>
+                                <path class="ice-tip-ridge" d="M 195,165 L 202,95 L 210,82" stroke="#ffffff" stroke-width="1" fill="none" stroke-linecap="round"/>
+                                <path class="ice-tip-ridge" d="M 215,165 L 222,118 L 228,105" stroke="#ffffff" stroke-width="1" fill="none" stroke-linecap="round"/>
+                            </g>
+
+                            <!-- Underwater body: split into worker + employer zones (heights updated by JS) -->
+                            <g clip-path="url(#bodyClip)">
+                                <rect id="iceWorkerRect" x="0" y="170" width="300" height="135" fill="url(#workerGrad)"/>
+                                <rect id="iceEmployerRect" x="0" y="305" width="300" height="135" fill="url(#empGrad)"/>
+                            </g>
+
+                            <!-- Faint highlight strokes on the body to suggest underwater contours -->
+                            <g clip-path="url(#bodyClip)" opacity="0.18" stroke="#ffffff" fill="none" stroke-linecap="round">
+                                <path class="ice-body-stroke" d="M 25,200 Q 18,250 22,300" stroke-width="1.4"/>
+                                <path class="ice-body-stroke" d="M 50,180 Q 35,260 45,360" stroke-width="1.2"/>
+                                <path class="ice-body-stroke" d="M 275,200 Q 282,250 278,300" stroke-width="1.4"/>
+                                <path class="ice-body-stroke" d="M 250,180 Q 265,260 255,360" stroke-width="1.2"/>
+                            </g>
+
+                            <!-- Outline of the entire iceberg (tip + body), drawn on top for crisp silhouette -->
+                            <path id="iceOutlinePath" d="M 50,170 L 60,135 L 78,108 L 95,128 L 115,98 L 140,68 L 155,82 L 175,38 L 195,72 L 215,98 L 235,128 L 250,150 L 250,170 L 275,195 L 290,225 L 293,260 L 295,290 L 293,325 L 285,365 L 255,400 L 210,425 L 140,440 L 85,420 L 50,395 L 22,360 L 8,320 L 5,290 L 8,280 L 22,240 L 38,200 Z"
+                                  fill="none" stroke="#1e3a8a" stroke-width="1.4" stroke-linejoin="round" opacity="0.35"/>
+
+                            <!-- Waterline ripple (decorative) -->
+                            <g opacity="0.45" stroke="#bae6fd" stroke-width="1" fill="none" stroke-linecap="round">
+                                <path id="iceWaterlineRipple1" d="M 5,172 Q 25,168 45,172 T 85,172 T 125,172 T 165,172 T 205,172 T 245,172 T 285,172"/>
+                                <path id="iceWaterlineRipple2" d="M 0,178 Q 22,174 44,178 T 88,178 T 132,178 T 176,178 T 220,178 T 264,178 T 300,178" opacity="0.6"/>
+                            </g>
+                        </svg>
+                        <svg class="ice-connectors-svg" id="iceConnectorsSvg">
+                            <defs>
+                                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+                                    <feMerge>
+                                        <feMergeNode in="blur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                        </svg>
+                        <div class="ice-label ice-label-net" id="iceZoneNet"></div>
+                        <div class="ice-label ice-label-employee" id="iceZoneEmployee"></div>
+                        <div class="ice-label ice-label-employer" id="iceZoneEmployer"></div>
+                    </div>
+                    <div class="ice-summary" id="iceSummary"></div>
+                </div>
+            </section>
+        </div>
+
+    </section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════
+     FOOTER
+     ════════════════════════════════════════════════════════ -->
 <footer>
-    Datos según <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025.html" target="_blank" rel="noopener">Manual Renta 2025</a> (Agencia Tributaria) y
-    <a href="https://www.seg-social.es/wps/portal/wss/internet/Trabajadores/CotizacionRecaudacionTrabajadores/36537" target="_blank" rel="noopener">Bases y tipos de cotización</a> (Seguridad Social).
-    Herramienta orientativa — no sustituye al asesoramiento profesional.
+    <div class="footer-sources">
+        <span>Datos según el</span>
+        <a href="https://sede.agenciatributaria.gob.es/Sede/ayuda/manuales-videos-folletos/manuales-practicos/manual-practico-renta-2025.html" target="_blank" rel="noopener noreferrer">Manual Renta 2025</a>
+        <span class="footer-divider">·</span>
+        <a href="https://www.seg-social.es/wps/portal/wss/internet/Trabajadores/CotizacionRecaudacionTrabajadores/36537" target="_blank" rel="noopener noreferrer">Bases y tipos de cotización</a>
+        <span class="footer-divider">·</span>
+        <a href="https://github.com/MarioContrerasLara/Calculadora-IRPF" target="_blank" rel="noopener noreferrer">Código fuente</a>
+    </div>
+    <div class="footer-meta">
+        <span class="disclaimer">Herramienta orientativa</span>
+        No sustituye al asesoramiento profesional. Cálculo ejecutado íntegramente en tu navegador.
+    </div>
 </footer>
 
-<script src="js/tarifa-at.js?v=20"></script>
-<script src="js/app.js?v=20"></script>
+<script src="js/tarifa-at.js?v=174"></script>
+<script src="js/app.js?v=246"></script>
+<script src="js/ui.js?v=178"></script>
+<script src="js/diag.js?v=174"></script>
 </body>
 </html>
